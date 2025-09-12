@@ -13,8 +13,8 @@
 MAX_DEPTH=1000
 
 """
-In search.py, you will implement generic search algorithms which are called by
-Pacman agents (in searchAgents.py).
+在search.py​​中，您将实现通用搜索算法
+PACMAN代理商（在searchagents.py中）。
 """
 
 import util
@@ -22,34 +22,34 @@ import heapq
 
 class SearchProblem:
     """
-    This class outlines the structure of a search problem, but doesn't implement
-    any of the methods (in object-oriented terminology: an abstract class).
+本课程概述了搜索问题的结构，但没有实现
+任何方法（在面向对象的术语中：抽象类）。
 
-    You do not need to change anything in this class, ever.
+您永远不需要更改此类的任何内容。
     """
 
     def getStartState(self):
         """
-        Returns the start state for the search problem.
+        返回搜索问题的开始状态。
         """
         util.raiseNotDefined()
 
     def isGoalState(self, state):
         """
-          state: Search state
+         状态：搜索状态
 
-        Returns True if and only if the state is a valid goal state.
+且仅当状态是有效的目标状态时返回true。
         """
         util.raiseNotDefined()
 
     def getSuccessors(self, state):
         """
-          state: Search state
+          状态：搜索状态
 
-        For a given state, this should return a list of triples, (successor,
-        action, stepCost), where 'successor' is a successor to the current
-        state, 'action' is the action required to get there, and 'stepCost' is
-        the incremental cost of expanding to that successor.
+对于给定状态，这应该返回三倍的列表（继任者，
+行动，步长），其中“继任者”是当前的继任者
+状态“行动​​”是到达那里所需的动作，而“ stepcost”是
+扩展到该继任者的增量成本。
         """
         util.raiseNotDefined()
 
@@ -65,8 +65,8 @@ class SearchProblem:
 
 def tinyMazeSearch(problem):
     """
-    Returns a sequence of moves that solves tinyMaze.  For any other maze, the
-    sequence of moves will be incorrect, so only use this for tinyMaze.
+返回一系列解决tinymaze的动作。对于任何其他迷宫，
+移动序列将是不正确的，因此仅将其用于Tinymaze。
     """
     from game import Directions
     s = Directions.SOUTH
@@ -75,20 +75,39 @@ def tinyMazeSearch(problem):
 
 def depthFirstSearch(problem):
     """
-    Search the deepest nodes in the search tree first.
+首先搜索搜索树中最深的节点。
 
-    Your search algorithm needs to return a list of actions that reaches the
-    goal. Make sure to implement a graph search algorithm.
+您的搜索算法需要返回到达该操作的列表
+目标。确保实现图形搜索算法。
 
-    To get started, you might want to try some of these simple commands to
-    understand the search problem that is being passed in:
+首先，您可能需要尝试一些这些简单命令
+了解正在传递的搜索问题：
 
     print("Start:", problem.getStartState())
     print("Is the start a goal?", problem.isGoalState(problem.getStartState()))
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    # util.raiseNotDefined()
+    Frontier = util.Stack()
+    Visited = []
+    Frontier.push((problem.getStartState(), []))
+    Visited.append(problem.getStartState())
+    
+    while Frontier.isEmpty() == 0:
+        state, actions = Frontier.pop()
+        if problem.isGoalState(state):
+            return actions
+        for next in problem.getSuccessors(state):
+            n_state = next[0]
+            n_direction = next[1]
+            if n_state not in Visited:
+                if next != problem.getSuccessors(state)[-1]:
+                    Frontier.push( (state, actions))
+                Frontier.push( (n_state, actions + [n_direction]) )
+                Visited.append( n_state )
+                break
+                
 
 
 def breadthFirstSearch(problem):

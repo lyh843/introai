@@ -28,8 +28,8 @@ that say
 
 "*** YOUR CODE HERE ***"
 
-The parts you fill in start about 3/4 of the way down.  Follow the project
-description for details.
+您填充的零件大约向下3/4。关注项目
+描述有关详细信息。
 
 Good luck and happy searching!
 """
