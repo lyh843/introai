@@ -102,8 +102,8 @@ def depthFirstSearch(problem):
             n_state = next[0]
             n_direction = next[1]
             if n_state not in Visited:
-                Frontier.push( (n_state, actions + [n_direction]) )
-                Visited.append( n_state )
+                Frontier.push((n_state, actions + [n_direction]))
+                Visited.append(n_state)
 
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
@@ -203,6 +203,22 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
+    Frontier = util.PriorityQueue()
+    Visited = []
+    Frontier.push((problem.getStartState(), []), 0 + heuristic(problem.getStartState(), problem))
+    Visited.append(problem.getStartState())
+    
+    while Frontier.isEmpty() == 0:
+        state, actions = Frontier.pop()
+        if problem.isGoalState(state):
+            return actions
+        for next in problem.getSuccessors(state):
+            n_state = next[0]
+            n_direction = next[1]
+            if n_state not in Visited:
+                Frontier.push((n_state, actions + [n_direction]), problem.getCostOfActions(actions + [n_direction]) + heuristic(n_state, problem))
+                Visited.append(n_state)
+    
     util.raiseNotDefined()
 
 # Abbreviations

@@ -381,6 +381,12 @@ def cornersHeuristic(state, problem):
     Visited_Corners = state[1]
     h_sum = 0
     "*** YOUR CODE HERE ***"
+    if node in walls:
+        return 99999
+    for corner in corners:
+        if corner not in Visited_Corners:
+            h_sum += ((node[0] - corner[0]) ** 2 + (node[1] - corner[1]) ** 2) ** 0.5
+
     return h_sum # Default to trivial solution
 
 
