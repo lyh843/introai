@@ -102,13 +102,8 @@ def depthFirstSearch(problem):
             n_state = next[0]
             n_direction = next[1]
             if n_state not in Visited:
-                if next != problem.getSuccessors(state)[-1]:
-                    Frontier.push( (state, actions))
                 Frontier.push( (n_state, actions + [n_direction]) )
                 Visited.append( n_state )
-                break
-                
-
 
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
@@ -150,6 +145,22 @@ def iterativeDeepeningSearch(problem):
         Returns the solution path if found within the limit, None otherwise.
         """
         "*** YOUR CODE HERE ***"
+        Frontier = util.Stack()
+        Visited = []
+        level = 0
+        Frontier.push((problem.getStartState(), [], level))
+        Visited.append(problem.getStartState())
+        while Frontier.isEmpty() == 0:
+            state, actions, curr_level = Frontier.pop()
+            if problem.isGoalState(state):
+                return actions
+            for next in problem.getSuccessors(state):
+                n_state = next[0]
+                n_direction = next[1]
+                if n_state not in Visited and curr_level < limit:
+                    Frontier.push((n_state, actions + [n_direction], curr_level + 1))
+                    Visited.append(n_state)
+        
 
     depth_limit = 0
     while True:
@@ -164,7 +175,21 @@ def iterativeDeepeningSearch(problem):
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
-
+    Frontier = util.PriorityQueue()
+    Visited = []
+    Frontier.push((problem.getStartState(), []), 0)
+    Visited.append(problem.getStartState())
+    while Frontier.isEmpty() == 0:
+        state, actions = Frontier.pop()
+        if problem.isGoalState(state):
+            return actions
+        for next in problem.getSuccessors(state):
+            n_state = next[0]
+            n_direction = next[1]
+            if n_state not in Visited:
+                Frontier.push((n_state, actions + [n_direction]), problem.getCostOfActions(actions + [n_direction]))
+                Visited.append(n_state)
+            
     util.raiseNotDefined()
 
 
