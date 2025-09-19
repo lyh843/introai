@@ -29,7 +29,7 @@ class Search(agent.Agent):
             for j in range(left, right + 1):
                 if board[i][j] != 0 : continue
                 new_board[i][j] = self.player
-                temp = maxmin(new_board, False, self.update_area(board, area, (i, j)), 0)
+                temp = self.maxmin(new_board, False, self.update_area(board, area, (i, j)), 0)
                 if temp > value:
                     value = temp
                     result_loc = (i, j)
@@ -62,7 +62,7 @@ class Search(agent.Agent):
                 for j in range(left, right + 1, 1):
                     if board[i][j] != 0 : continue
                     new_board[i][j] = self.player
-                    temp = maxmin(new_board, False, self.update_area(board, area, (i, j)), level + 1)
+                    temp = self.maxmin(new_board, False, self.update_area(board, area, (i, j)), level + 1)
                     if temp > value:
                         value = temp
         else:
@@ -71,7 +71,7 @@ class Search(agent.Agent):
                 for j in range(left, right + 1, 1):
                     if board[i][j] != 0: continue
                     new_board[i][j] = self.opponent
-                    temp = maxmin(new_board, True, self.update_area(board, area, (i, j)), level + 1)
+                    temp = self.maxmin(new_board, True, self.update_area(board, area, (i, j)), level + 1)
                     if temp < value:
                         value = temp
                         
