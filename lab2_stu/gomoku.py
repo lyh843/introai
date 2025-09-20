@@ -240,7 +240,7 @@ def main():
     board_size = args.size
     print(f"创建 {board_size}x{board_size} 的棋盘")
 
-    from agent import Agent as A1  # TODO: fill in the name of your file
+    from STU_ID_origin import Search as A1  # TODO: fill in the name of your file
 
     agent1 = A1(1)
 
