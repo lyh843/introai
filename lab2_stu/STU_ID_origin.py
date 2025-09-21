@@ -4,19 +4,20 @@ import agent
 
 # 超参数
 # 每次拓展节点的深度
-LEVEL = 4
+LEVEL = 3
 # 下棋时考虑的距离有棋区域的范围
-DIST = 1
+DIST = 2
 #
-NUM = 10
-# 下棋的评分
-# score = {"RUSH_FOUR": 100,
-#          "LIVE_THREE": 100,
-#          "Jump_THREE": 75,
-#          "RUSH_THREE": 50,
-#          "LIVE_TWO": 25,
-#          "DEATH_TWO": 10,
-#         }
+NUM = 15
+# 价值评估函数中，防守 / 进攻 的比值，默认为1
+W = 1
+# 评价分数
+scores = {"Five":100000,
+          "LIVE_FOUR":100000,
+          "DEATH_FOUR":50000,
+          "LIVE_THREE":5000,
+          "SLEEP_THREE":1000,
+          "LIVE_TWO":100}
 
 class Search(agent.Agent):
     def __init__(self, player):
@@ -28,21 +29,21 @@ class Search(agent.Agent):
             
         Return: 
             返回一个元组(x, y)，代表下棋位置
-        """        
+        """
+        # 如果棋盘为空，直接下在中间位置        
         if (board == 0).all():
             return (len(board) // 2, len(board) // 2)
         
-        check_loc = self.check_priority_moves(board)
-        if check_loc:
-            return check_loc
-        
+        # 遍历要下的区域
         area = self.search_area(board)
-        up, down, left, right = area[0], area[1], area[2], area[3]
+        up, down, left, right = area
+        
         value = float('-inf')
         result_loc = (0, 0)
         record = []
+        # 初次判断，直接判断这个节点的重要性
         for i in range(up, down + 1, 1):
-            for j in range(left, right + 1):
+            for j in range(left, right + 1, 1):
                 if board[i][j] != 0 : continue
                 temp_score = self.judge_count(board, (i, j), self.player)
                 record.append((temp_score, (i, j)))
@@ -50,30 +51,43 @@ class Search(agent.Agent):
         record.sort(reverse=True, key=lambda x: x[0])
         record = record[:NUM]
                 
-        for _, (i, j) in record:
-            new_board = board.copy()                
-            new_board[i][j] = self.player
-            temp = self.maxmin(new_board, False, self.update_area(board, area, (i, j)), 0)
+        for _, (i, j) in record:              
+            board[i][j] = self.player
+            temp = self.maxmin(board, True, self.update_area(board, area, (i, j)), 0)
+            board[i][j] = 0
             if temp > value:
                 value = temp
                 result_loc = (i, j)
         
         return result_loc
                 
-    def evaluate(self, board):
+    def evaluate(self, board, area, is_player):
         """
         传入当前的棋盘,
         计算一个评价数值。
+        既要看自己赢的概率，也要看对手的赢面
         """
-        board_size = len(board)
         value = 0        
-        for i in range(board_size):
-            for j in range(board_size):
+        for i in range(area[0], area[1] + 1, 1):
+            for j in range(area[2], area[3] + 1, 1):
                 if board[i][j] == self.player:
-                    value += self.judge_count(board, (i, j), self.player)
+                    player_score = self.judge_count(board, (i, j), self.player)
+                    if is_player and player_score >= scores["DEATH_FOUR"]:
+                        return 999999
+                    else: 
+                        value += player_score
                 elif board[i][j] == self.opponent:
-                    value -= 100 * self.judge_count(board, (i, j), self.opponent)
-        
+                    opponent_score = self.judge_count(board, (i, j), self.opponent)
+                    if (not is_player) and opponent_score >= scores["DEATH_FOUR"]:
+                        return -9999999
+                    else:
+                        value -= W * opponent_score
+                elif board[i][j] == 0:
+                    # 假设对方在此落子，评估威胁
+                    value -= (W // 2) * self.judge_count(board, (i, j), self.opponent)
+                    # 假设自己在此落子，评估机会
+                    value += self.judge_count(board, (i, j), self.player) // 2
+
         return value
                                 
     def maxmin(self, board, to_max, area, level = 0, alpha = float('-inf'), beta = float('inf')):
@@ -84,14 +98,16 @@ class Search(agent.Agent):
             board (_type_): _description_
             to_max (bool): 目前是否为极大值模型
         """
+        # 到达底部就返回
         if level == LEVEL:
-            return self.evaluate(board)
+            return self.evaluate(board, area, to_max)
+        
         up, down, left, right = area
-        new_board = board.copy()
         value = 0
         record = []
         if to_max:
             value = float('-inf')
+            # 初步筛选，选出前 NUM 个有价值的点
             for i in range(up, down + 1, 1) :
                 for j in range(left, right + 1, 1):
                     if board[i][j] != 0 : continue
@@ -102,13 +118,18 @@ class Search(agent.Agent):
             record = record[:NUM]
             
             for _, (i, j) in record:                    
-                new_board[i][j] = self.player
-                temp = self.maxmin(new_board, False, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
+                board[i][j] = self.player
+                temp = self.maxmin(board, False, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
+                board[i][j] = 0
                 if temp > value:
                     value = temp
-                    alpha = value
+                    alpha = max(value, alpha)
+                if beta <= alpha:
+                    break
+                
         else:
             value = float('inf')
+            # 初步筛选，选出前 NUM 个有价值的点
             for i in range(up, down + 1, 1):
                 for j in range(left, right + 1, 1):
                     if board[i][j] != 0: continue
@@ -119,16 +140,23 @@ class Search(agent.Agent):
             record = record[:NUM]
             
             for _, (i, j) in record:        
-                new_board[i][j] = self.opponent
-                temp = self.maxmin(new_board, True, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
+                board[i][j] = self.opponent
+                temp = self.maxmin(board, True, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
+                board[i][j] = 0
                 if temp < value:
                     value = temp
-                    beta = value
+                    beta = min(value, beta)
+                if beta <= alpha:
+                    break
                         
         return value
         
     def search_area(self, board):
-        """返回maxmin搜索时遍历的节点
+        """
+            返回maxmin搜索时遍历的节点
+            返回的实质是一个正方形区域，包含所有需要遍历的节点
+            up, left 是小数字
+            down, right 是大数字
 
         Args:
             board (_type_): _description_
@@ -167,7 +195,6 @@ class Search(agent.Agent):
                     right = True
                     area.append(min(j + DIST, board_size - 1))
                     break
-                
         return area
     
     def update_area(self, board, area, loc):
@@ -192,111 +219,54 @@ class Search(agent.Agent):
             (1, 1),
             (1, -1),
         ]
+        
+        max_score = 0
+        
         for dx, dy in directions:
-            count_tar = 1
-            count_space = 0
-            count_barrier = 0
-            # 正向
-            for i in range(4):
-                new_x, new_y = x + dx * (i + 1), y + dy * (i + 1)
-                if 0 <= new_x < board_size and 0 <= new_y < board_size:
-                    if board[new_x][new_y] == target:
-                        count_tar += 1
-                    elif board[new_x][new_y] == 0:
-                        count_space += 1
-                    else:
-                        count_barrier += 1
-                        break
-                else:
-                    count_barrier += 1
+            count = 1  # 包含当前位置
+            blocked_front = blocked_back = False
+            empty_front = empty_back = 0
+            
+            # 正向检查
+            for i in range(1, 5):
+                new_x, new_y = x + dx * i, y + dy * i
+                if not (0 <= new_x < board_size and 0 <= new_y < board_size):
+                    blocked_front = True
                     break
-                
-            # 反向
-            for i in range(4):
-                new_x, new_y = x - dx * (i + 1), y - dy * (i + 1)
-                if 0 <= new_x < board_size and 0 <= new_y < board_size:
-                    if board[new_x][new_y] == target:
-                        count_tar += 1
-                    elif board[new_x][new_y] == 0:
-                        count_space += 1
-                    else:
-                        count_barrier += 1
-                        break
+                if board[new_x][new_y] == target:
+                    count += 1
+                elif board[new_x][new_y] == 0:
+                    empty_front += 1
                 else:
-                    count_barrier += 1
+                    blocked_front = True
                     break
             
-            if count_tar >= 5:
-                return 50000
-            elif count_tar == 4 and count_space >= 1:
-                return 50000
-            elif count_tar == 3 and count_space >= 2:
-                return 3000
-            elif count_tar == 2 and count_space >= 3:
-                return 50
-            elif count_tar == 1:
-                return 5
-            elif count_tar == 3 and count_space == 1:
-                return 200
-            elif count_tar == 3:
-                return 60
-            elif count_tar == 2:
-                return 30
+            # 反向检查
+            for i in range(1, 5):
+                new_x, new_y = x - dx * i, y - dy * i
+                if not (0 <= new_x < board_size and 0 <= new_y < board_size):
+                    blocked_back = True
+                    break
+                if board[new_x][new_y] == target:
+                    count += 1
+                elif board[new_x][new_y] == 0:
+                    empty_back += 1
+                else:
+                    blocked_back = True
+                    break
+            
+            # 更准确的评分逻辑
+            if count >= 5:
+                return scores["Five"]  # 成五
+            elif count == 4 and not blocked_front and not blocked_back:
+                return scores["LIVE_FOUR"]   # 活四
+            elif count == 4 and (not blocked_front or not blocked_back):
+                return scores["DEATH_FOUR"]   # 冲四
+            elif count == 3 and not blocked_front and not blocked_back and empty_front + empty_back >= 1:
+                max_score = max(max_score, scores["LIVE_THREE"])  # 活三
+            elif count == 3 and (not blocked_front or not blocked_back):
+                max_score = max(max_score, scores["SLEEP_THREE"])  # 眠三
+            elif count == 2 and not blocked_front and not blocked_back and empty_front + empty_back >= 2:
+                max_score = max(max_score, scores["LIVE_TWO"])   # 活二
         
-        return 0
-    
-    def check_priority_moves(self, board):
-        """
-        检查是否有优先级很高的着法，如：
-        1. 自己可以获胜的点（活四）
-        2. 对手即将获胜需要阻止的点（对手的活四或冲四）
-        3. 自己可以形成活四的点
-        """
-        board_size = len(board)
-        # 检查自己是否有获胜点（可以直接形成五子）
-        for i in range(board_size):
-            for j in range(board_size):
-                if board[i][j] == 0:
-                    # 检查自己在此处落子是否能获胜
-                    board[i][j] = self.player
-                    if self.judge_count(board, (i, j), self.player) >= 100000:
-                        board[i][j] = 0  # 恢复棋盘
-                        return (i, j)
-                    board[i][j] = 0  # 恢复棋盘
-        
-        # 检查对手是否有即将获胜的点，需要阻止
-        threat_moves = []  # 存储对手的威胁点
-        for i in range(board_size):
-            for j in range(board_size):
-                if board[i][j] == 0:
-                    # 检查对手在此处落子的威胁程度
-                    board[i][j] = self.opponent
-                    score = self.judge_count(board, (i, j), self.opponent)
-                    if score >= 50000:  # 对手可以获胜
-                        board[i][j] = 0
-                        return (i, j)  # 立即阻止
-                    elif score >= 10000:  # 对手有冲四等威胁
-                        threat_moves.append((score, (i, j)))
-                    board[i][j] = 0
-        
-        # 如果有威胁点，返回威胁最大的点
-        if threat_moves:
-            threat_moves.sort(reverse=True)
-            return threat_moves[0][1]
-        
-        # 检查自己是否有形成活四的点
-        good_moves = []
-        for i in range(board_size):
-            for j in range(board_size):
-                if board[i][j] == 0:
-                    board[i][j] = self.player
-                    score = self.judge_count(board, (i, j), self.player)
-                    if score >= 50000:  # 自己可以形成活四
-                        good_moves.append((score, (i, j)))
-                    board[i][j] = 0
-        
-        if good_moves:
-            good_moves.sort(reverse=True)
-            return good_moves[0][1]
-        
-        return None  # 没有优先级很高的着法
+        return max_score
