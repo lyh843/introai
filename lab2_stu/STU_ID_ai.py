@@ -1,251 +1,411 @@
 import numpy as np
-from collections import deque
-from agent import Agent
+import agent
 
 
-class Search(Agent):
-    """基于JavaScript专家难度算法的五子棋AI，专为11×11棋盘优化"""
-    
+# 超参数
+# 每次拓展节点的深度
+LEVEL = 3
+# 下棋时考虑的距离有棋区域的范围
+DIST = 2
+#
+NUM = 5
+# 价值评估函数中，防守 / 进攻 的比值，默认为1
+W = 1000000
+# 评价分数
+scores = {"Five":100000,
+          "LIVE_FOUR":100000,
+          "DEATH_FOUR":50000,
+          "LIVE_THREE":5000,
+          "SLEEP_THREE":1000,
+          "LIVE_TWO":100}
+
+class Search(agent.Agent):
     def __init__(self, player):
         super().__init__(player)
-        self.board_size = 11
-        self.initialize_ai()
-        
-    def initialize_ai(self):
-        """初始化AI参数和数据结构"""
-        # 专家难度参数
-        self.depth = 7
-        self.totry = [10, 10]
-        
-        # 评分系统
-        self.scores = [0, 1, 10, 2000, 4000, 100000000000]
-        self.coe = [-2, 1]  # 对手和己方的系数
-        
-        # 四个评估方向
-        self.directions = [(-1, -1), (-1, 0), (0, -1), (-1, 1)]
-        
-        # 状态变量
-        self.total_score = 0
-        self.pieces_count = 0
-        self.cache = {}
-        
-        # 初始化棋盘数据结构
-        self.initialize_board()
-    
-    class BoardPoint:
-        """棋盘格子数据结构"""
-        def __init__(self, row, col):
-            self.row = row
-            self.col = col
-            self.has_piece = False
-            self.score = 0
-            # 四个方向的信息: [己方数量, 对方数量, 当前状态, 系数]
-            self.direction_info = [[0, 0, 0, 0] for _ in range(4)]
-        
-        def __lt__(self, other):
-            """用于排序，分数高的优先"""
-            if self.has_piece:
-                return False
-            if other.has_piece:
-                return True
-            return self.score > other.score
-    
-    def initialize_board(self):
-        """初始化棋盘数据结构"""
-        self.board = []
-        self.score_queue = deque()
-        
-        for i in range(self.board_size):
-            row = []
-            for j in range(self.board_size):
-                point = self.BoardPoint(i, j)
-                row.append(point)
-                self.score_queue.append(point)
-            self.board.append(row)
-        
-        # 棋盘状态数组
-        self.board_state = np.zeros((self.board_size, self.board_size), dtype=np.uint8)
-    
     def make_move(self, board):
-        """
-        主决策函数，返回最佳移动位置
-        """
-        # 同步外部棋盘状态
-        self.sync_board_state(board)
+        """改进的下棋逻辑，优先防守"""
+        if (board == 0).all():
+            return (len(board) // 2, len(board) // 2)
         
-        # 清空缓存
-        self.cache = {}
+        area = self.search_area(board)
         
-        # 如果没有空位，返回None
-        if self.pieces_count >= self.board_size * self.board_size:
-            return None
+        # 第一步：检查紧急情况
+        urgent_move = self.check_urgent_moves(board, area)
+        if urgent_move and isinstance(urgent_move, tuple):
+            return urgent_move
         
-        # 使用负极大值算法搜索最佳移动
-        alpha = float('-inf')
-        best_move = None
+        # 第二步：评估候选位置
+        candidates = self.get_candidate_moves(board, area)
         
-        # 获取候选移动并按评分排序
-        candidate_moves = self.get_candidate_moves()
-        
-        # 评估每个候选移动
-        for move in candidate_moves[:self.totry[0]]:
-            row, col = move
-            score = -self.negamax_search(row, col, self.depth, float('-inf'), -alpha)
-            self.undo_move(row, col, self.depth % 2)
-            
-            if score > alpha:
-                alpha = score
-                best_move = (row, col)
-        
-        return best_move if best_move else candidate_moves[0]
-    
-    def sync_board_state(self, external_board):
-        """同步外部棋盘状态到内部数据结构"""
-        for i in range(self.board_size):
-            for j in range(self.board_size):
-                external_val = external_board[i][j]
-                internal_point = self.board[i][j]
-                
-                if external_val == 0 and internal_point.has_piece:
-                    # 移除棋子
-                    self.update_board(i, j, 'remove')
-                elif external_val == self.player and not internal_point.has_piece:
-                    # 放置己方棋子
-                    self.update_board(i, j, self.player)
-                elif external_val == self.opponent and not internal_point.has_piece:
-                    # 放置对方棋子
-                    self.update_board(i, j, self.opponent)
-    
-    def update_board(self, row, col, action):
-        """更新棋盘状态"""
-        if action == 'remove':
-            piece_type = self.board[row][col].has_piece - 1
-            self._update_internal_board(row, col, piece_type, True)
-            self.pieces_count -= 1
-        else:
-            piece_type = 1 if action == self.player else 0
-            self._update_internal_board(row, col, piece_type, False)
-            self.pieces_count += 1
-    
-    def _update_internal_board(self, row, col, piece_type, is_remove):
-        """内部棋盘更新逻辑"""
-        score_change = 0
-        
-        for dir_idx, (dr, dc) in enumerate(self.directions):
-            r, c = row, col
-            
-            for step in range(5):
-                if not (0 <= r < self.board_size and 0 <= c < self.board_size):
-                    break
-                
-                point = self.board[r][c]
-                dir_info = point.direction_info[dir_idx]
-                
-                if not is_remove:
-                    # 放置棋子
-                    if dir_info[2] > 0:
-                        score_change -= self._update_direction_score(r, c, dir_idx, -dir_info[3])
-                    
-                    dir_info[piece_type] += 1
-                    
-                    if dir_info[1 - piece_type] > 0:
-                        dir_info[2] = 0
-                    else:
-                        dir_info[2] = dir_info[piece_type]
-                        dir_info[3] = self.coe[piece_type]
-                        score_change += self._update_direction_score(r, c, dir_idx, dir_info[3])
-                
-                else:
-                    # 移除棋子 - 简化实现
-                    if dir_info[2] > 0:
-                        score_change -= self._update_direction_score(r, c, dir_idx, -dir_info[3])
-                    dir_info[piece_type] -= 1
-                    # 这里需要更复杂的移除逻辑...
-                
-                r += dr
-                c += dc
-        
-        self.total_score += score_change
-    
-    def _update_direction_score(self, row, col, direction, multiplier):
-        """更新某个方向的分数"""
-        dr, dc = self.directions[direction]
-        point = self.board[row][col]
-        dir_info = point.direction_info[direction]
-        score_value = self.scores[dir_info[2]]
-        
-        total_change = 0
-        r, c = row, col
-        
-        for step in range(5):
-            if 0 <= r < self.board_size and 0 <= c < self.board_size:
-                change = score_value * multiplier
-                self.board[r][c].score += change
-                total_change += change
-                r -= dr
-                c -= dc
-        
-        return total_change
-    
-    def simulate_move(self, row, col, piece_type):
-        """模拟落子"""
-        self.pieces_count += 1
-        self._update_internal_board(row, col, piece_type, False)
-    
-    def undo_move(self, row, col, piece_type):
-        """撤销模拟落子"""
-        self._update_internal_board(row, col, piece_type, True)
-        self.pieces_count -= 1
-    
-    def negamax_search(self, row, col, depth, alpha, beta):
-        """负极大值搜索算法"""
-        self.simulate_move(row, col, depth % 2)
-        
-        # 检查胜利条件
-        if abs(self.total_score) >= 10000000:
-            result = float('-inf')
-            self.undo_move(row, col, depth % 2)
-            return result
-        
-        # 棋盘已满
-        if self.pieces_count >= self.board_size * self.board_size:
-            result = 0
-            self.undo_move(row, col, depth % 2)
-            return result
-        
-        # 达到搜索深度
-        if depth == 0:
-            result = self.total_score
-            self.undo_move(row, col, depth % 2)
-            return result
-        
-        # 获取候选移动
-        candidate_moves = self.get_candidate_moves()
         best_score = float('-inf')
+        best_move = candidates[0] if candidates else (len(board)//2, len(board)//2)
         
-        # 评估候选移动
-        for move in candidate_moves[:self.totry[depth % 2]]:
-            move_row, move_col = move
-            score = -self.negamax_search(move_row, move_col, depth - 1, -beta, -alpha)
+        for move in candidates[:NUM]:  # 只评估前NUM个候选
+            i, j = move
+            board[i][j] = self.player
+            score = self.maxmin(board, True, self.update_area(board, area, move), 0)
+            board[i][j] = 0
+            
+            # 给防守性走法额外加分
+            if self.is_defensive_move(board, move):
+                score += 1000  # 防守奖励
             
             if score > best_score:
                 best_score = score
-                alpha = max(alpha, best_score)
+                best_move = move
+        
+        return best_move
+
+    def is_defensive_move(self, board, move):
+        """判断是否是防守性走法"""
+        i, j = move
+        # 检查是否在对手棋子附近
+        for dx in range(-2, 3):
+            for dy in range(-2, 3):
+                if dx == 0 and dy == 0:
+                    continue
+                ni, nj = i + dx, j + dy
+                if 0 <= ni < len(board) and 0 <= nj < len(board):
+                    if board[ni][nj] == self.opponent:
+                        return True
+        return False
                 
-                if alpha >= beta:
+    def evaluate(self, board, area):
+        """平衡攻防的评估函数"""
+        player_score = 0
+        opponent_score = 0
+        
+        # 首先检查是否有立即胜利或需要立即防守的情况
+        urgent_move = self.check_urgent_moves(board, area)
+        if urgent_move:
+            return urgent_move
+        
+        # 评估每个重要位置
+        important_positions = self.get_important_positions(board, area)
+        
+        for pos in important_positions:
+            i, j = pos
+            if board[i][j] == 0:
+                # 进攻价值：我方能形成的棋型
+                player_attack = self.evaluate_position(board, (i, j), self.player)
+                # 防守价值：阻止对方形成的棋型
+                player_defense = self.evaluate_position(board, (i, j), self.opponent)
+                
+                # 对手的威胁
+                opponent_attack = self.evaluate_position(board, (i, j), self.opponent)
+                opponent_defense = self.evaluate_position(board, (i, j), self.player)
+                
+                # 综合评分：既要考虑进攻也要考虑防守
+                player_score += player_attack + player_defense * 1.5  # 防守更重要
+                opponent_score += opponent_attack + opponent_defense
+        
+        return player_score - opponent_score * 1.2  # 更重视防守对手
+
+    def check_urgent_moves(self, board, area):
+        """检查紧急情况：立即胜利或必须防守的棋型"""
+        urgent_positions = []
+        
+        # 检查我方是否能立即获胜
+        win_move = self.find_winning_move(board, self.player, area)
+        if win_move:
+            return 1000000  # 极大值，确保选择这个位置
+        
+        # 检查对手是否能立即获胜（必须防守）
+        opponent_win_move = self.find_winning_move(board, self.opponent, area)
+        if opponent_win_move:
+            return -800000  # 必须防守的极大负值
+        
+        # 检查对手的活四、冲四等威胁
+        threat_moves = self.find_threat_moves(board, self.opponent, area)
+        if threat_moves:
+            return -500000  # 高威胁需要防守
+        
+        return None
+
+    def find_winning_move(self, board, player, area):
+        """寻找能立即获胜的位置"""
+        for i in range(area[0], area[1] + 1):
+            for j in range(area[2], area[3] + 1):
+                if board[i][j] == 0:
+                    board[i][j] = player
+                    if self.is_win(board, player, (i, j)):
+                        board[i][j] = 0
+                        return (i, j)
+                    board[i][j] = 0
+        return None
+
+    def find_threat_moves(self, board, player, area):
+        """寻找威胁位置：活四、冲四、双活三等"""
+        threat_positions = []
+        
+        for i in range(area[0], area[1] + 1):
+            for j in range(area[2], area[3] + 1):
+                if board[i][j] == 0:
+                    # 模拟下棋
+                    board[i][j] = player
+                    threat_level = self.evaluate_threat_level(board, player, (i, j))
+                    board[i][j] = 0
+                    
+                    if threat_level >= 3:  # 活四、冲四等级别
+                        threat_positions.append((i, j))
+        
+        return threat_positions if threat_positions else None
+    
+    def evaluate_position(self, board, pos, player):
+        """更准确的棋型评估"""
+        x, y = pos
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+        total_score = 0
+        
+        for dx, dy in directions:
+            score = self.evaluate_direction(board, x, y, dx, dy, player)
+            total_score += score
+        
+        return total_score
+
+    def evaluate_direction(self, board, x, y, dx, dy, player):
+        """单个方向的棋型评估"""
+        board_size = len(board)
+        
+        # 统计连续棋子数量
+        count = 1  # 当前位置
+        
+        # 正向统计
+        blocked_front = False
+        for i in range(1, 6):
+            nx, ny = x + dx * i, y + dy * i
+            if not (0 <= nx < board_size and 0 <= ny < board_size):
+                blocked_front = True
+                break
+            if board[nx][ny] == player:
+                count += 1
+            else:
+                if board[nx][ny] != 0:
+                    blocked_front = True
+                break
+        
+        # 反向统计
+        blocked_back = False
+        for i in range(1, 6):
+            nx, ny = x - dx * i, y - dy * i
+            if not (0 <= nx < board_size and 0 <= ny < board_size):
+                blocked_back = True
+                break
+            if board[nx][ny] == player:
+                count += 1
+            else:
+                if board[nx][ny] != 0:
+                    blocked_back = True
+                break
+        
+        # 评估棋型
+        return self.assess_pattern(count, blocked_front, blocked_back)
+
+    def assess_pattern(self, count, blocked_front, blocked_back):
+        """根据连续数量和阻塞情况评估棋型"""
+        if count >= 5:
+            return scores["Five"]
+        
+        blocked_count = (1 if blocked_front else 0) + (1 if blocked_back else 0)
+        
+        if blocked_count == 0:  # 活棋
+            if count == 4:
+                return scores["LIVE_FOUR"]
+            elif count == 3:
+                return scores["LIVE_THREE"]
+            elif count == 2:
+                return scores["LIVE_TWO"]
+        elif blocked_count == 1:  # 半活棋
+            if count == 4:
+                return scores["DEATH_FOUR"]
+            elif count == 3:
+                return scores["SLEEP_THREE"]
+        
+        return 0
+    def has_neighbor(self, board, pos, distance):
+        """检查位置周围是否有棋子"""
+        x, y = pos
+        board_size = len(board)
+        for dx in range(-distance, distance + 1):
+            for dy in range(-distance, distance + 1):
+                if dx == 0 and dy == 0:
+                    continue
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < board_size and 0 <= ny < board_size:
+                    if board[nx][ny] != 0:
+                        return True
+        return False
+                                
+    def maxmin(self, board, to_max, area, level = 0, alpha = float('-inf'), beta = float('inf')):
+        """
+        进行极大极小值判断以及剪枝处理。
+        返回当前节点的value
+        Args:
+            board (_type_): _description_
+            to_max (bool): 目前是否为极大值模型
+        """
+        # 到达底部就返回
+        if level == LEVEL:
+            return self.evaluate(board, area)
+        
+        up, down, left, right = area
+        value = 0
+        record = []
+        if to_max:
+            value = float('-inf')
+            # 初步筛选，选出前 NUM 个有价值的点
+            for i in range(up, down + 1, 1) :
+                for j in range(left, right + 1, 1):
+                    if board[i][j] != 0 : continue
+                    score = self.judge_count(board, (i, j), self.player)
+                    if score >= scores["Five"]: # 已经定输赢了，不需要再次深入
+                        return float('inf')
+                    record.append((score, (i, j)))
+            
+            record.sort(reverse=True, key=lambda x: x[0])
+            record = record[:NUM]
+            
+            for _, (i, j) in record:                    
+                board[i][j] = self.player
+                temp = self.maxmin(board, False, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
+                board[i][j] = 0
+                if temp > value:
+                    value = temp
+                    alpha = max(value, alpha)
+                if beta <= alpha:
+                    break
+                
+        else:
+            value = float('inf')
+            # 初步筛选，选出前 NUM 个有价值的点
+            for i in range(up, down + 1, 1):
+                for j in range(left, right + 1, 1):
+                    if board[i][j] != 0: continue
+                    score = self.judge_count(board, (i, j), self.opponent)
+                    if score >= scores["Five"]:
+                        return - W * scores["Five"]
+                    record.append((score, (i, j)))
+                    
+            record.sort(reverse=True, key= lambda x : x[0])
+            record = record[:NUM]
+            
+            for _, (i, j) in record:        
+                board[i][j] = self.opponent
+                temp = self.maxmin(board, True, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
+                board[i][j] = 0
+                if temp < value:
+                    value = temp
+                    beta = min(value, beta)
+                if beta <= alpha:
+                    break
+                        
+        return value
+        
+    def search_area(self, board):
+        """
+            返回maxmin搜索时遍历的节点
+            返回的实质是一个正方形区域，包含所有需要遍历的节点
+            up, left 是小数字
+            down, right 是大数字
+
+        Args:
+            board (_type_): _description_
+        """
+        area = []
+        up = down = left = right = False
+        board_size = len(board)
+        for i in range(board_size):
+            if up : break
+            for j in range(board_size):
+                if board[i][j] != 0:
+                    up = True
+                    area.append(max(0, i - DIST))
                     break
         
-        self.undo_move(row, col, depth % 2)
-        return best_score
-    
-    def get_candidate_moves(self):
-        """获取并排序候选移动"""
-        candidates = []
-        for i in range(self.board_size):
-            for j in range(self.board_size):
-                if not self.board[i][j].has_piece:
-                    candidates.append((i, j))
+        for i in range(board_size - 1, -1, - 1):
+            if down : break
+            for j in range(board_size):
+                if board[i][j] != 0:
+                    down = True
+                    area.append(min(i + DIST, board_size - 1))
+                    break
         
-        # 按评分排序，高分优先
-        candidates.sort(key=lambda pos: self.board[pos[0]][pos[1]].score, reverse=True)
-        return candidates
+        for j in range(board_size):
+            if left : break
+            for i in range(board_size):
+                if board[i][j] != 0:
+                    left = True
+                    area.append(max(0, j - DIST))
+                    break
+                
+        for j in range(board_size - 1, -1, -1):
+            if right : break
+            for i in range(board_size):
+                if board[i][j] != 0:
+                    right = True
+                    area.append(min(j + DIST, board_size - 1))
+                    break
+        return area
+    
+    def update_area(self, board, area, loc):
+        new_area = area.copy()
+        if loc[0] - DIST < area[0]:
+            new_area[0] = max(loc[0] - DIST, 0)
+        if loc[0] + DIST > area[1]:
+            new_area[1] = min(loc[0] + DIST, len(board) - 1)
+        if loc[1] - DIST < area[2]:
+            new_area[2] = max(loc[1] - DIST, 0)
+        if loc[1] + DIST > area[3]:
+            new_area[3] = min(loc[1] + DIST, len(board) - 1)
+        
+        return new_area
+    
+    def judge_count(self, board, loc, target):
+        x, y = loc
+        board_size = len(board)
+        directions = [
+            (0, 1),
+            (1, 0),
+            (1, 1),
+            (1, -1),
+            (0, -1),
+            (-1, 0),
+            (-1, -1),
+            (-1, 1)
+        ]
+        
+        max_score = 0
+        
+        for dx, dy in directions:
+            count = 1  # 包含当前位置
+            blocked = 0
+            empty = 0
+            
+            for i in range(1, 5):
+                new_x, new_y = x + dx * i, y + dy * i
+                if not (0 <= new_x < board_size and 0 <= new_y < board_size):
+                    blocked += 1
+                    break
+                if board[new_x][new_y] == target:
+                    count += 1
+                elif board[new_x][new_y] == 0:
+                    empty += 1
+                else:
+                    blocked += 1
+                    break
+            
+            # 更准确的评分逻辑
+            if count >= 5:
+                max_score += scores["Five"]  # 成五
+            elif count == 4 and empty >= 2:
+                max_score += scores["LIVE_FOUR"]   # 活四
+            elif count == 4 and empty >= 1:
+                max_score += scores["DEATH_FOUR"]   # 冲四
+            elif count == 3 and empty >= 2:
+                max_score += scores["LIVE_THREE"] # 活三
+            elif count == 3 and empty >= 1:
+                max_score += scores["SLEEP_THREE"]  # 眠三
+            elif count == 2 and empty >= 3:
+                max_score += scores["LIVE_TWO"]   # 活二
+        
+        return max_score
