@@ -10,7 +10,7 @@ DIST = 1
 #
 NUM = 15
 # 价值评估函数中，防守 / 进攻 的比值，默认为1
-W = 10
+W = 1.3
 # 评价分数
 scores = {"Five":100000,
           "LIVE_FOUR":100000,
@@ -73,7 +73,7 @@ class Search(agent.Agent):
                 if board[i][j] == self.player:
                     player_score = self.judge_count(board, (i, j), self.player)
                     value += player_score
-                else:
+                elif board[i][j] == self.opponent:
                     opponent_score = W * self.judge_count(board, (i, j), self.opponent)
                     value -= opponent_score
                     
@@ -243,7 +243,7 @@ class Search(agent.Agent):
             blocked = 0
             empty = 0
             
-            for i in range(1, 6):
+            for i in range(6):
                 new_x, new_y = x + dx * i, y + dy * i
                 if not (0 <= new_x < board_size and 0 <= new_y < board_size):
                     blocked += 1
