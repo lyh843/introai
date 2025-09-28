@@ -7,10 +7,11 @@ import agent
 LEVEL = 3
 # 下棋时考虑的距离有棋区域的范围
 DIST = 1
-#
-NUM = 15
 # 价值评估函数中，防守 / 进攻 的比值，默认为1
-W = 1.3
+W = 10
+# 方向
+DIRE = [(0, 1), (0, -1), (1, 0),(-1, 0),
+        (1, 1), (1, -1), (-1, 1), (-1, -1)]
 # 评价分数
 scores = {"Five":100000,
           "LIVE_FOUR":100000,
@@ -36,24 +37,22 @@ class Search(agent.Agent):
         
         # 遍历要下的区域
         area = self.search_area(board)
-        up, down, left, right = area
         
         value = float('-inf')
         result_loc = (0, 0)
         record = []
         # 初次判断，直接判断这个节点的重要性
-        for i in range(up, down + 1, 1):
-            for j in range(left, right + 1, 1):
-                if board[i][j] != 0 : continue
-                temp_score = self.judge_count(board, (i, j), self.player)
-                record.append((temp_score, (i, j)))
+        for point in area:
+            i, j = point
+            if board[i][j] != 0 : continue
+            temp_score = self.judge_count(board, (i, j), self.player)
+            record.append((temp_score, (i, j)))
         
         record.sort(reverse=True, key=lambda x: x[0])
-        # record = record[:NUM]
                 
         for _, (i, j) in record:              
             board[i][j] = self.player
-            temp = self.maxmin(board, True, self.update_area(board, area, (i, j)), 0)
+            temp = self.maxmin(board, False, self.search_area(board), 0)
             board[i][j] = 0
             if temp > value:
                 value = temp
@@ -61,15 +60,16 @@ class Search(agent.Agent):
         
         return result_loc
                 
-    def evaluate(self, board, area):
+    def evaluate(self, board):
         """
         传入当前的棋盘,
         计算一个评价数值。
         返回一个对于player的得分
         """
         value = 0        
-        for i in range(area[0], area[1] + 1, 1):
-            for j in range(area[2], area[3] + 1, 1):
+        board_size = len(board)
+        for i in range(board_size):
+            for j in range(board_size):
                 if board[i][j] == self.player:
                     player_score = self.judge_count(board, (i, j), self.player)
                     value += player_score
@@ -89,156 +89,80 @@ class Search(agent.Agent):
         """
         # 到达底部就返回
         if level == LEVEL or self.check_win(board):
-            return self.evaluate(board, area)
+            return self.evaluate(board)
         
-        up, down, left, right = area
         value = 0
         record = []
         if to_max:
             value = float('-inf')
-            # 初步筛选，选出前 NUM 个有价值的点
-            for i in range(up, down + 1, 1) :
-                for j in range(left, right + 1, 1):
-                    if board[i][j] != 0 : continue
-                    score = self.judge_count(board, (i, j), self.player)
-                    record.append((score, (i, j)))
+            # 初步筛选
+            for point in area:
+                i, j = point
+                if board[i][j] != 0 : continue
+                score = self.judge_count(board, (i, j), self.player)
+                record.append((score, (i, j)))
             
             record.sort(reverse=True, key=lambda x: x[0])
-            # record = record[:NUM]
             
             for _, (i, j) in record:                    
                 board[i][j] = self.player
-                temp = self.maxmin(board, False, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
+                temp = self.maxmin(board, False, self.search_area(board), level + 1, alpha, beta)
                 board[i][j] = 0
                 if temp > value:
                     value = temp
                     alpha = max(value, alpha)
                 if beta <= alpha:
                     break
-            
-            # for i in range(up, down + 1, 1):
-            #     for j in range(left, right + 1, 1):
-            #         if board[i][j] == 0:
-            #             board[i][j] = self.player
-            #             temp = self.maxmin(board, False, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
-            #             board[i][j] = 0
-            #             if temp > value:
-            #                 value = temp
-            #                 alpha = max(value, alpha)
-            #             if beta <= alpha:
-            #                 break
                 
         else:
             value = float('inf')
             # 初步筛选，选出前 NUM 个有价值的点
-            for i in range(up, down + 1, 1):
-                for j in range(left, right + 1, 1):
-                    if board[i][j] != 0: continue
-                    score = self.judge_count(board, (i, j), self.opponent)
-                    record.append((score, (i, j)))
+            for point in area:
+                i, j = point
+                if board[i][j] != 0: continue
+                score = self.judge_count(board, (i, j), self.opponent)
+                record.append((score, (i, j)))
                     
             record.sort(reverse=True, key= lambda x : x[0])
-            # record = record[:NUM]
             
             for _, (i, j) in record:        
                 board[i][j] = self.opponent
-                temp = self.maxmin(board, True, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
+                temp = self.maxmin(board, True, self.search_area(board), level + 1, alpha, beta)
                 board[i][j] = 0
                 if temp < value:
                     value = temp
                     beta = min(value, beta)
                 if beta <= alpha:
                     break
-            # for i in range(up, down + 1, 1):
-            #     for j in range(left, right + 1, 1):
-            #         if board[i][j] == 0:
-            #             board[i][j] = self.opponent
-            #             temp = self.maxmin(board, True, self.update_area(board, area, (i, j)), level + 1, alpha, beta)
-            #             board[i][j] = 0
-            #             if temp < value:
-            #                 value = temp
-            #                 beta = min(value, beta)
-            #             if beta <= alpha:
-            #                 break
                         
         return value
         
     def search_area(self, board):
         """
             返回maxmin搜索时遍历的节点
-            返回的实质是一个正方形区域，包含所有需要遍历的节点
-            up, left 是小数字
-            down, right 是大数字
-
+            即有棋子区域的DIST范围区域内
         Args:
             board (_type_): _description_
         """
-        area = []
-        up = down = left = right = False
+        area = set()
         board_size = len(board)
         for i in range(board_size):
-            if up : break
             for j in range(board_size):
                 if board[i][j] != 0:
-                    up = True
-                    area.append(max(0, i - DIST))
-                    break
-        
-        for i in range(board_size - 1, -1, - 1):
-            if down : break
-            for j in range(board_size):
-                if board[i][j] != 0:
-                    down = True
-                    area.append(min(i + DIST, board_size - 1))
-                    break
-        
-        for j in range(board_size):
-            if left : break
-            for i in range(board_size):
-                if board[i][j] != 0:
-                    left = True
-                    area.append(max(0, j - DIST))
-                    break
-                
-        for j in range(board_size - 1, -1, -1):
-            if right : break
-            for i in range(board_size):
-                if board[i][j] != 0:
-                    right = True
-                    area.append(min(j + DIST, board_size - 1))
-                    break
+                    for dist in range(1, DIST + 1):
+                        for dx, dy in DIRE:
+                            if 0 <= i + dx * dist < board_size and 0 <= j + dy * dist < board_size and board[i + dx * dist][j + dy * dist] == 0:
+                                area.add((i + dx * dist, j + dy * dist))
+
         return area
-    
-    def update_area(self, board, area, loc):
-        new_area = area.copy()
-        if loc[0] - DIST < area[0]:
-            new_area[0] = max(loc[0] - DIST, 0)
-        if loc[0] + DIST > area[1]:
-            new_area[1] = min(loc[0] + DIST, len(board) - 1)
-        if loc[1] - DIST < area[2]:
-            new_area[2] = max(loc[1] - DIST, 0)
-        if loc[1] + DIST > area[3]:
-            new_area[3] = min(loc[1] + DIST, len(board) - 1)
-        
-        return new_area
     
     def judge_count(self, board, loc, target):
         x, y = loc
         board_size = len(board)
-        directions = [
-            (0, 1),
-            (1, 0),
-            (1, 1),
-            (1, -1),
-            (0, -1),
-            (-1, 0),
-            (-1, -1),
-            (-1, 1)
-        ]
         
         max_score = 0
         
-        for dx, dy in directions:
+        for dx, dy in DIRE:
             count = 1  # 包含当前位置
             blocked = 0
             empty = 0
