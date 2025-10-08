@@ -4,11 +4,12 @@ import agent
 
 # 超参数
 # 每次拓展节点的深度
-LEVEL = 3
+LEVEL = 2
 # 下棋时考虑的距离有棋区域的范围
 DIST = 1
 # 价值评估函数中，防守 / 进攻 的比值，默认为1
-W = 10
+W1 = 1 # 进攻
+W2 = 1.23 # 防守
 # 方向
 DIRE = [(0, 1), (0, -1), (1, 0),(-1, 0),
         (1, 1), (1, -1), (-1, 1), (-1, -1)]
@@ -60,7 +61,7 @@ class Search(agent.Agent):
         
         return result_loc
                 
-    def evaluate(self, board):
+    def evaluate(self, board, isPlayer: bool):
         """
         传入当前的棋盘,
         计算一个评价数值。
@@ -74,12 +75,15 @@ class Search(agent.Agent):
                     player_score = self.judge_count(board, (i, j), self.player)
                     value += player_score
                 elif board[i][j] == self.opponent:
-                    opponent_score = W * self.judge_count(board, (i, j), self.opponent)
+                    if isPlayer: # 考虑这一步是谁下，来进行动态的权重分配
+                        opponent_score = self.judge_count(board, (i, j), self.opponent) / W1
+                    else:
+                        opponent_score = W2 * self.judge_count(board, (i, j), self.opponent)
                     value -= opponent_score
                     
         return value
                                 
-    def maxmin(self, board, to_max, area, level = 0, alpha = float('-inf'), beta = float('inf')):
+    def maxmin(self, board, to_max: bool, area, level = 0, alpha = float('-inf'), beta = float('inf')):
         """
         进行极大极小值判断以及剪枝处理。
         返回当前节点的value
@@ -89,7 +93,7 @@ class Search(agent.Agent):
         """
         # 到达底部就返回
         if level == LEVEL or self.check_win(board):
-            return self.evaluate(board)
+            return self.evaluate(board, to_max)
         
         value = 0
         record = []
