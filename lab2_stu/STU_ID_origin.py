@@ -3,12 +3,14 @@ import agent
 
 
 # 超参数
-# 每次拓展节点的深度
-LEVEL = 3
+# 每次拓展节点的深度 2太蠢了，一定要3
+LEVEL = 3 
 # 下棋时考虑的距离有棋区域的范围
 DIST = 1
 # 价值评估函数中，防守 / 进攻 的比值，默认为1
-W = 10
+W = 1.5
+# 筛选数量
+NUM = 30
 # 方向
 DIRE = [(0, 1), (0, -1), (1, 0),(-1, 0),
         (1, 1), (1, -1), (-1, 1), (-1, -1)]
@@ -49,10 +51,11 @@ class Search(agent.Agent):
             record.append((temp_score, (i, j)))
         
         record.sort(reverse=True, key=lambda x: x[0])
+        # record = record[:min(NUM, len(record))]
                 
         for _, (i, j) in record:              
             board[i][j] = self.player
-            temp = self.maxmin(board, False, self.search_area(board), 0)
+            temp = self.maxmin(board, False, self.search_area(board), self.evaluate(board), 0)
             board[i][j] = 0
             if temp > value:
                 value = temp
@@ -78,8 +81,21 @@ class Search(agent.Agent):
                     value -= opponent_score
                     
         return value
+    
+    def update_evaluate(self, board, pre_value, loc):
+        value = pre_value
+        i, j = loc
+        if board[i][j] == self.player:
+            player_score = self.judge_count(board, (i, j), self.player)
+            value += player_score
+        elif board[i][j] == self.opponent:
+            opponent_score = W * self.judge_count(board, (i, j), self.opponent)
+            value -= opponent_score
+            
+        return value
+
                                 
-    def maxmin(self, board, to_max, area, level = 0, alpha = float('-inf'), beta = float('inf')):
+    def maxmin(self, board, to_max, area, curr_value, level = 0, alpha = float('-inf'), beta = float('inf')):
         """
         进行极大极小值判断以及剪枝处理。
         返回当前节点的value
@@ -89,9 +105,9 @@ class Search(agent.Agent):
         """
         # 到达底部就返回
         if level == LEVEL or self.check_win(board):
-            return self.evaluate(board)
+            return curr_value
         
-        value = 0
+        value = curr_value
         record = []
         if to_max:
             value = float('-inf')
@@ -103,10 +119,11 @@ class Search(agent.Agent):
                 record.append((score, (i, j)))
             
             record.sort(reverse=True, key=lambda x: x[0])
+            # record = record[:min(NUM, len(record))]
             
             for _, (i, j) in record:                    
                 board[i][j] = self.player
-                temp = self.maxmin(board, False, self.search_area(board), level + 1, alpha, beta)
+                temp = self.maxmin(board, False, self.search_area(board), self.update_evaluate(board, curr_value, (i, j)), level + 1, alpha, beta)
                 board[i][j] = 0
                 if temp > value:
                     value = temp
@@ -124,10 +141,11 @@ class Search(agent.Agent):
                 record.append((score, (i, j)))
                     
             record.sort(reverse=True, key= lambda x : x[0])
+            # record = record[:min(NUM, len(record))]
             
             for _, (i, j) in record:        
                 board[i][j] = self.opponent
-                temp = self.maxmin(board, True, self.search_area(board), level + 1, alpha, beta)
+                temp = self.maxmin(board, True, self.search_area(board), self.update_evaluate(board, curr_value, (i, j)), level + 1, alpha, beta)
                 board[i][j] = 0
                 if temp < value:
                     value = temp
