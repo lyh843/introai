@@ -1,8 +1,8 @@
 # Fdb version 3
-["pdflatex"] 1758944355 "/home/lyh/class/introai/homework/homework.tex" "homework.pdf" "homework" 1758944356
+["pdflatex"] 1760012924 "/home/lyh/class/introai/homework/homework_1/homework.tex" "homework.pdf" "homework" 1760012924
   "/etc/texmf/web2c/texmf.cnf" 1758543386 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/home/lyh/.texlive2021/texmf-var/web2c/xetex/xelatex.fmt" 1752672852 3606614 621f049265f3fd7750c94092ecff50b5 ""
-  "/home/lyh/class/introai/homework/homework.tex" 1758944354 3615 8ee26530c19d1d4f5ac877acbe1301a0 ""
+  "/home/lyh/class/introai/homework/homework_1/homework.tex" 1760010687 3555 c073e7d3f07e19e76f1ed030f880644b ""
   "/home/lyh/texmf/tex/latex/ctex/ctex.cfg" 1758893513 96 6fc841591368613ec7d1137d111d92b8 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmmi12.tfm" 1136768653 1524 4414a8315f39513458b80dfc63bff03a ""
@@ -51,10 +51,10 @@
   "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1644012257 39432 7155514e09a3d69036fac785183a21c2 ""
   "/usr/share/texmf/tex/latex/CJK/CJKfntef.sty" 1485503905 12851 a92a26031294f6fa88114f524b3b794a ""
   "/usr/share/texmf/web2c/texmf.cnf" 1644012257 39432 7155514e09a3d69036fac785183a21c2 ""
-  "T4_1.jpg" 1758943406 125417 88b435918f43d2df34fd512f6dace30e ""
-  "T4_2.jpg" 1758944108 229637 9e2442fdb3d0f098f9430089abb384c0 ""
-  "homework.aux" 1758944355 1074 5ad8939d4ed376d33af9fdb0697acf68 "pdflatex"
-  "homework.tex" 1758944354 3615 8ee26530c19d1d4f5ac877acbe1301a0 ""
+  "T4_1.jpg" 1760012893 378689 02b417a82569b35aef75ed8c36dfe04c ""
+  "T4_2.jpg" 1760012762 431301 18d742170b742fd0000dfaf694b2822a ""
+  "homework.aux" 1760012924 1074 c4f7e07f11920921996d442046678c4f "pdflatex"
+  "homework.tex" 1760010687 3555 c073e7d3f07e19e76f1ed030f880644b ""
   (generated)
   "homework.aux"
   "homework.log"
