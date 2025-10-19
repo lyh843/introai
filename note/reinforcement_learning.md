@@ -1,4 +1,4 @@
-# 强化学习
+# **强化学习**
 
 ## 一、强化学习简介
 
@@ -27,7 +27,7 @@
    > 强化学习最终学得的就是一个策略函数。
 
    - 确定性策略：$\pi: S \rightarrow A$
-   - 随机性策略：$\pi: S \times A \rightarrow \R$
+   - 随机性策略：$\pi: S \times A \rightarrow \mathbb{R}$
 
 4. 状态转移（state transition）：$P: S \times A \times S \rightarrow \mathbb{R}$ 从当前t时刻状态$s_t$转移到下一个时刻的状态$s_{t+1}$。
 
@@ -116,7 +116,170 @@ $$
   - 到达目标单元：$r_{target} = 1$
   - 其他情况，奖励$r=0$
 
-### 4. 有模型学习
+## 贝尔曼方程
 
+### 1. 有模型学习
 
+**目标**：选择能够最大化累计奖励期望的策略$\pi(s):S \rightarrow A$
+$$
+\mathbb{E}[r_0 + \gamma r_1 + \gamma^2 r_2 + \cdots]
+$$
+**三个步骤：** 策略评估、改进、迭代
 
+### 2. 价值函数
+
+状态（或状态-动作二元组）的函数，用来评估当前智能体在给定状态（或给定状态与动作）下有多好。
+
+- **状态值函数(State value function)**
+  $$
+  V^{\pi}(s_t)=\mathbb{E}[r_t+\gamma r_{t+1}+\gamma^2r_{t+2} + \cdots |s =s_t]
+  $$
+
+- **状态-动作值函数(State-Action value function)**
+  $$
+  Q^{\pi}(s_t, a_t)=\mathbb{E}[r_t + \gamma r_{t+1} + \gamma^2 r_{t+2}+ \cdots | s=s_t, a= a_t]
+  $$
+
+- **两者的关系：**
+  $$
+  V^{\pi}(s_t)=\sum_{a}\pi(s_t, a)\cdot Q^{\pi}(s_t, a)
+  $$
+
+### 3. 贝尔曼方程
+
+$$
+\begin{aligned}
+V^{\pi}(s)&=\mathbb{E}[r_1 + \gamma r_2 +\gamma^2 r_3 + \cdots|s_0=s]\\
+&=\mathbb{E}[r_1 + \gamma V^{\pi}(s_{t+1})|s_0=s]\\
+&=\sum_a \pi(s, a) \sum_{s'\in S} P_{sa}(s')(r_{sa}(s')+\gamma V^{\pi}(s'))
+\end{aligned}
+$$
+
+$$
+Q^{\pi}(s,a)=\sum_{s'\in S}P_{sa}(s')(r_{sa}(s')+\gamma V^{\pi}(s'))
+$$
+
+其中：
+
+- $r_{sa}(s')$表示从状态 s 采取动作 a 转换到状态 s' 所获得的奖励
+- $P_{sa}(s')$表示从状态 s 采取动作 a 转换到状态 s' 的概率（归属于环境）
+- $\pi(s, a)$表示在状态 s 下采取动作 a 的概率（归属智能体）
+
+#### 贝尔曼最优方程
+
+最优策略对应的值函数称为**最优值函数**。
+$$
+\begin{aligned}
+V^*(s)&=max_\pi V^{\pi}(s)\\
+&= max_a\sum_{s'\in S}P_{sa}(s')(r_{sa}(s') + \gamma V^{\pi}(s'))\\
+&= max_a Q^{\pi*}(sa)
+\end{aligned}
+$$
+非最优策略的改进方式：将策略选择的动作改为当前最优的动作
+$$
+\pi'(s) = arg\ max_{a\in A} Q^{\pi}(s,a)
+$$
+
+### 4. 价值迭代
+
+**过程：**
+
+1. 对于每个状态$s$，初始化$V(s) = 0$
+2. 重复以下过程直到收敛：
+   - 对每个状态，更新$V(s) = max_a\sum_{s'\in S}P_{sa}(s')(r_{sa}(s') + \gamma V^{\pi}(s'))= max_a Q^{\pi}(sa)$
+
+### 5. 策略迭代
+
+**过程：**
+
+1. 随机初始化策略$\pi$
+2. 重复以下过程直到收敛：
+   - 策略评估：$V:= V^{\pi}=\sum_a \pi(s, a)\sum_{s'\in S}P_{sa}(s')(r_{sa}(s')+\gamma V^{\pi}(s'))$
+   - 策略改进：对每个状态，更新 $\pi(s) = arg\ max_{a \in A}Q^{\pi}(s,a)$
+
+### 总结：
+
+- 两种策略均可归结为基于动态规划的寻优算法
+- 价值迭代是贪心更新法
+- 策略迭代中，用Bellman等式更新价值函数代价很大
+- 对于空间较小的MDP，策略迭代通常很快收敛
+- 对于空间较大的MDP，价值迭代更实用（效率更高）
+
+## 无模型学习
+
+状态转移函数与奖励函数未知。
+
+从“经验”中学习一个MDP模型：
+
+- 学习状态转移概率
+  $$
+  P_{sa}(s') = \frac{\text{在s下采取动作a并转移到s'的次数}}{\text{在s下采取动作a的次数}}
+  $$
+
+有没有办法不学习MDP？能不能从经验数据中直接学习价值函数和策略函数？——**模型无关的强化学习(Model-Free Reinforcement Learning)**
+
+### 1. 蒙特卡洛强化学习
+
+- 在模型未知的情形下，从起始状态出发，使用某个策略进行采样获得轨迹
+
+  > Episode 1: $s_1, a_1, r_1, s_2, a_2, r_2, \cdots, s_r, a_r, r_r$
+
+- 对于轨迹中出现的每一对状态-动作，记录其奖赏之和，作为该状态-动作对的一次累计奖赏采样值
+
+- 多次采样得到多条轨迹之后，将每个状态-动作对的累计奖赏采样值进行平均，得到状态-动作值函数$Q$的估计
+
+- 从某个状态-动作出发，执行策略得到一个回合的轨迹，基于该回合数据估计状态-动作的价值
+
+  > $s_1 \xrightarrow{a_2} s_2 \xrightarrow{a_4} s_1 \xrightarrow{a_1} \dots$
+
+- 一个长的回合可以看做很多个从不同状态-动作出发的子回合，可以用于估计多个不同状态-动作 的值；样本效率更高
+
+  > ![image-20251017100222978](C:\Users\26418\AppData\Roaming\Typora\typora-user-images\image-20251017100222978.png)
+
+- 访问在一个回合中的每个时间步长$t$的状态$s$
+  - 增量计算器$N(s) \leftarrow N(s) + 1$
+  - 增量总累计奖励$S(s) \leftarrow S(s) + G_t$
+  - 价值被估计为累计奖励的均值$V(s) = S(s) / N(s)$
+- 同理，可计算出$Q(s, a)$
+
+**注意：**如果策略是确定性的，对于某个状态只会输出一个动作，使用这样的策略进行采样，只能得到多条相同的轨迹
+
+#### 引入$\epsilon-$贪心算法
+
+$$
+\pi^{\epsilon}(s) =
+\begin{cases}
+\pi(s), \quad \text{以概率} 1-\epsilon\\
+\text{以均匀概率从$A$中随机选取动作} \quad \text{以概率}\epsilon
+\end{cases}
+$$
+
+1. **轨迹采样：**按照当前策略的$\epsilon-$贪心版本与环境交互，得到 episode
+2. **策略评估：**根据采样的轨迹更新$Q(s,a)$的估计
+3. **策略改进：**根据新的$Q$，更新策略
+
+#### 异策略（off-policy）蒙特卡洛强化学习
+
+仅在评估时引入$\epsilon$贪心策略，策略改进时改进原始策略
+
+- 估计一个不同分布的期望：
+  $$
+  \begin{aligned}
+  \mathbb{E}_{x-p}[f(x)]&=\int_x p(x)f(x)dx\\
+  &= \int_xq(x)\frac{p(x)}{q(x)}f(x)dx\\
+  &= \mathbb{E}_{x-q}[\frac{p(x)}{q(x)}f(x)]
+  \end{aligned}
+  $$
+
+- 将每个实例的权重重新分配为$\beta(x) = \frac{p(x)}{q(x)}$
+
+使用策略$\pi$的采样轨迹来评估策略$\pi$，实际上就是对累计奖赏估计期望
+$$
+Q(s,a) = \frac{1}{m}\sum_{i=1}^mr_i
+$$
+使用策略$\pi'$的采样轨迹来评估策略$\pi$，仅需对累计奖赏加权
+$$
+Q(s,a) = \frac{1}{m}\sum_{i=1}^m\frac{p_i^{\pi}}{p_i^{\pi'}}r_i
+$$
+
+> $p_i^{\pi}$和$p_i^{\pi'}$分别表示两个策略产生第$i$条轨迹的概率
