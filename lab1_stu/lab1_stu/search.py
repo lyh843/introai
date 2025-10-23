@@ -210,15 +210,16 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     
     while Frontier.isEmpty() == 0:
         state, actions = Frontier.pop()
-        
+        if state in Visited:
+            continue
+        Visited.append(state)
         if problem.isGoalState(state):
             return actions
         for next in problem.getSuccessors(state):
             n_state = next[0]
             n_direction = next[1]
-            if n_state not in Visited:
-                Frontier.push((n_state, actions + [n_direction]), problem.getCostOfActions(actions + [n_direction]) + heuristic(n_state, problem))
-                Visited.append(n_state)
+            Frontier.push((n_state, actions + [n_direction]), problem.getCostOfActions(actions + [n_direction]) + heuristic(n_state, problem))
+
     
     util.raiseNotDefined()
 

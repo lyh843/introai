@@ -385,7 +385,7 @@ def cornersHeuristic(state, problem):
     #     return 99999
     for corner in corners:
         if corner not in Visited_Corners:
-            h_sum += abs(node[0] - corner[0]) + abs(node[1] - corner[1])
+            h_sum = max(abs(node[0] - corner[0]) + abs(node[1] - corner[1]), h_sum)
 
     return h_sum # Default to trivial solution
 
