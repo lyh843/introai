@@ -1,42 +1,40 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import expon, uniform
+num = int(input("请输入一个年份"))
+if (num % 4 == 0 and num % 100 != 0) or num % 400 == 0:
+    print("这一年是闰年")
+else:
+    print("这一年不是闰年")
+    
+    
+max_num = 0
+for i in range(5):
+    temp = int(input(f"请输入第 {i + 1} 个整数： "))
+    max_num = max_num if max_num > temp else temp
+print("五个数中最大的数是：", max_num) 
 
-# ==== 1. 定义Clayton Copula采样函数 ====
-def clayton_copula_sample(theta, n):
-    # Step 1: 从Gamma分布采样 (根据Clayton的构造原理)
-    W = np.random.gamma(shape=1/theta, scale=1, size=n)
-    # Step 2: 从独立的均匀分布采样 U
-    U = np.random.rand(n)
-    # Step 3: 计算另一个依赖变量 V
-    V = (U**(-theta/(1+theta)) * (np.random.rand(n)**(-1/theta) - 1) + 1)**(-1/theta)
-    return U, V
 
-# ==== 2. 生成Copula上的U,V ====
-theta = 2.0
-n = 5000
-U, V = clayton_copula_sample(theta, n)
+num = input("请输入一个整数：")
+sum_digits = 0
+for digit in num:
+    sum_digits += int(digit)
+print("这个整数每一位数字的和是：", sum_digits)
 
-# ==== 3. 定义边缘分布 ====
-# X1 ~ Exp(1), X2 ~ Uniform(0,1)
-X1 = expon.ppf(U, scale=1.0)   # 反CDF变换
-X2 = uniform.ppf(V, loc=0, scale=1)
 
-# ==== 4. 可视化 ====
-fig, axes = plt.subplots(1, 3, figsize=(15,4))
-
-axes[0].scatter(U, V, s=5, color='steelblue')
-axes[0].set_title('Copula space (U,V)')
-
-axes[1].hist2d(X1, X2, bins=50, cmap='Blues')
-axes[1].set_title('Joint distribution (X1, X2)')
-
-axes[2].scatter(X1, X2, s=5, color='darkorange')
-axes[2].set_title('Joint samples after transformation')
-
-for ax in axes:
-    ax.set_xlabel('X1 or U')
-    ax.set_ylabel('X2 or V')
-
-plt.tight_layout()
-plt.show()
+power = 20
+print(f"初始电量：{power}%")
+while power < 100:
+    power += 5 if 100 - power > 5 else 100 - power
+    print(f"正在充电，当前电量：{power}%")
+    if power == 80:
+        use_choice = input("电量已达80%，是否要先使用？（输入是或否）：")
+        if use_choice == "是":
+            print("可先使用设备，使用后可再次充电")
+            break
+        else:
+            print("继续充电")
+    if power == 90:
+        stop_choice = input("电量已达90%，是否要停止充电？（输入是或否）：")
+        if stop_choice == "是":
+            print(f"已停止充电，最终电量：{power}%")
+            break
+if power == 100:
+    print("充电已完成，当前电量：100%")

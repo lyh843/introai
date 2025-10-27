@@ -99,16 +99,12 @@ class ValueIterationAgent(ValueEstimationAgent):
         "*** YOUR CODE HERE ***"
         actions = self.mdp.getPossibleActions(state)
         max_value = -float('inf')
-        max_prob = 0
         best_action = None
         for action in actions:
-            successor = self.mdp.getTransitionStatesAndProbs(state, action)
-            for (nextState, prob) in successor:    
-                temp_value = self.values[nextState]
-                if temp_value > max_value or (temp_value == max_value and prob > max_prob):
-                    max_value = temp_value
-                    max_prob = prob
-                    best_action = action
+            temp_value = self.computeQValueFromValues(state, action)
+            if temp_value > max_value:
+                max_value = temp_value
+                best_action = action
         
         return best_action
         
