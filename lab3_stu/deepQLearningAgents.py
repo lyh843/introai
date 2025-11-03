@@ -4,6 +4,7 @@ from qlearningAgents import PacmanQAgent
 from backend import ReplayMemory
 import layout
 import copy
+import torch
 
 import numpy as np
 
@@ -79,42 +80,51 @@ class PacmanDeepQAgent(PacmanQAgent):
         return reward
 
 
-    def compute_q_targets(self, minibatch, network = None, target_network=None, doubleQ=False):
-        """Prepare minibatches
-        Args:
-            minibatch (List[Transition]): Minibatch of `Transition`
-        Returns:
-            float: Loss value
-        """
+    def compute_q_targets(self, minibatch, network=None, target_network=None, doubleQ=False):
         if network is None:
             network = self.model
         if target_network is None:
             target_network = self.target_model
+
         states = np.vstack([x.state for x in minibatch])
         states = nn.Constant(states)
-        actions = np.array([x.action for x in minibatch])
-        rewards = np.array([x.reward for x in minibatch])
         next_states = np.vstack([x.next_state for x in minibatch])
         next_states = nn.Constant(next_states)
-        done = np.array([x.done for x in minibatch])
 
-        Q_predict = network.run(states).data
-        Q_target = np.copy(Q_predict)
+        actions = np.array([x.action for x in minibatch])
+        rewards = np.array([x.reward for x in minibatch], dtype=np.float32)
+        done = np.array([x.done for x in minibatch], dtype=np.float32)
+
+        # Tensor 化
+        rewards = torch.tensor(rewards)
+        done = torch.tensor(done)
+
+        # Q_predict
+        Q_predict = network.run(states)  # Tensor
+        Q_target = Q_predict.clone()     # Tensor
+
+        # exploration_bonus
         state_indices = states.data.astype(int)
         state_indices = (state_indices[:, 0], state_indices[:, 1])
-        exploration_bonus = 1 / (2 * np.sqrt((self.counts[state_indices] / 100)))
+        exploration_bonus = 1 / (2 * torch.sqrt(torch.tensor(self.counts[state_indices] / 100, dtype=torch.float32)))
 
-        replace_indices = np.arange(actions.shape[0])
-        action_indices = np.argmax(network.run(next_states).data, axis=1)
-        target = rewards + exploration_bonus + (1 - done) * self.discount * target_network.run(next_states).data[replace_indices, action_indices]
+        replace_indices = torch.arange(len(actions))
+        # double Q
+        action_indices = torch.argmax(network.run(next_states), dim=1)
+        next_Q = target_network.run(next_states)
+        target = rewards + exploration_bonus + (1 - done) * self.discount * next_Q[replace_indices, action_indices]
 
-        Q_target[replace_indices, actions] = target
+        # assign target to correct actions
+        Q_target[replace_indices, torch.tensor(actions)] = target
 
+        # td clipping
         if self.td_error_clipping is not None:
-            Q_target = Q_predict + np.clip(
-                     Q_target - Q_predict, -self.td_error_clipping, self.td_error_clipping)
+            Q_target = Q_predict + torch.clamp(Q_target - Q_predict,
+                                            -self.td_error_clipping,
+                                            self.td_error_clipping)
 
         return Q_target
+
 
     def update(self, state, action, nextState, reward):
         legalActions = self.getLegalActions(state)
@@ -126,11 +136,11 @@ class PacmanDeepQAgent(PacmanQAgent):
             x, y = np.array(state.getFood().data).shape
             self.counts = np.ones((x, y))
 
-        state = self.get_features(state)
-        nextState = self.get_features(nextState)
-        self.counts[int(state[0])][int(state[1])] += 1
+        state_feats = self.get_features(state)
+        nextState_feats = self.get_features(nextState)
+        self.counts[int(state_feats[0])][int(state_feats[1])] += 1
 
-        transition = (state, action_index, reward, nextState, done)
+        transition = (state_feats, action_index, reward, nextState_feats, done)
         self.replay_memory.push(*transition)
 
         if len(self.replay_memory) < self.min_transitions_before_training:
@@ -140,23 +150,35 @@ class PacmanDeepQAgent(PacmanQAgent):
 
         if len(self.replay_memory) > self.min_transitions_before_training and self.update_amount % self.update_frequency == 0:
             minibatch = self.replay_memory.pop(self.model.batch_size)
-            states = np.vstack([x.state for x in minibatch])
-            states = nn.Constant(states.astype("float64"))
-            Q_target1 = self.compute_q_targets(minibatch, self.model, self.target_model, doubleQ=self.doubleQ)
-            Q_target1 = nn.Constant(Q_target1.astype("float64"))
 
+            # 将 states 转为 numpy 后再包装 Constant
+            states = np.vstack([x.state for x in minibatch]).astype(np.float64)
+            states_const = nn.Constant(states)
+
+            # Q_target1
+            Q_target1 = self.compute_q_targets(minibatch, self.model, self.target_model, doubleQ=self.doubleQ)
+            if isinstance(Q_target1, torch.Tensor):
+                Q_target1 = Q_target1.detach().numpy()
+            Q_target1_const = nn.Constant(Q_target1.astype(np.float64))
+
+            # Q_target2 (Double Q)
             if self.doubleQ:
                 Q_target2 = self.compute_q_targets(minibatch, self.target_model, self.model, doubleQ=self.doubleQ)
-                Q_target2 = nn.Constant(Q_target2.astype("float64"))
-            
-            self.model.gradient_update(states, Q_target1)
+                if isinstance(Q_target2, torch.Tensor):
+                    Q_target2 = Q_target2.detach().numpy()
+                Q_target2_const = nn.Constant(Q_target2.astype(np.float64))
+
+            # 梯度更新
+            self.model.gradient_update(states_const, Q_target1_const)
             if self.doubleQ:
-                self.target_model.gradient_update(states, Q_target2)
+                self.target_model.gradient_update(states_const, Q_target2_const)
 
         if self.target_update_rate > 0 and self.update_amount % self.target_update_rate == 0:
             self.target_model.set_weights(copy.deepcopy(self.model.parameters))
 
         self.update_amount += 1
+
+
 
     def final(self, state):
         """Called at the end of each game."""
