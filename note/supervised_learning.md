@@ -225,6 +225,12 @@ $$
 ### 2. 支持向量机-基本型
 
 **最大间隔：**寻找参数$w$和$b$，使得$\gamma = \frac{2}{\|w\|}$最大
+$$
+\begin{aligned}
+\arg \max_{w, b} & \frac{2}{\|w\|}\\
+\text{s.t.} & y_i(w^Tx_i + b) \geq 1, i = 1, 2, \dots, m.
+\end{aligned}
+$$
 
 ### 3. 支持向量机-对偶型
 
@@ -236,13 +242,32 @@ $$
   $$
   
 - 第二步：令$L(w,b, \alpha)$对$w$和$b$的偏导为零可得：
+  $$
+  w = \sum_{i = 1}^m \alpha_iy_ix_i, \quad 0 = \sum_{i = 1}^m \alpha_i y_i
+  $$
 
 - 第三步：回代可得：
-  $$
-  \max_\alpha \sum_{i=1}^m \alpha_i -\frac{1}{2} \sum_{i=1}^m\sum_{j=1}^m
-  $$
+
+$$
+\begin{aligned}
+\max_\alpha & \sum_{i=1}^m \alpha_i -\frac{1}{2} \sum_{i=1}^m\sum_{j=1}^m \alpha_i \alpha_j y_i y_j x_i^T x_j\\
+\text{s.t.} & sum_{i = 1}^m \alpha_i y_i = 0, \alpha_i \geq 0, \quad i = 1, 2, \dots, m
+\end{aligned}
+$$
 
 - 最终模型：$f(x) = w^Tx + b = \sum_{i=1}^m a_iy_ix_i^Tx + b$
+
+- KKT条件：
+  $$
+  \begin{cases}
+  \alpha_i \geq 0\\
+  1 - y_i f(x_i) \leq 0\\
+  \alpha_i(1 - y_if(x_i)) = 0
+  \end{cases}
+  \Rightarrow \alpha_i = 0 \text{或}y_if(x_i) = 1
+  $$
+
+- 
 
 **解的稀疏性：**训练完成后，最终模型仅与支持向量有关。
 
