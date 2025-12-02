@@ -67,12 +67,19 @@
 
 - 正确率：模型预测正确的概率
   $$
-  P(f(x) = y) \quad \sum_{i=1}^m \mathbb{I}
+  P(f(x) = y), \quad \sum_{i=1}^m \mathbb{I}(f(x_i) = y_i)
+  $$
+  
+- 
+
+#### 回归问题
+
+- 均方误差（Mean Squared Error）
+  $$
+  \sum_{i = 1}^m (f(x) - y)^2
   $$
 
-#### ==回归问题==
-
-
+- 
 
 ### 4. 算法
 
@@ -80,8 +87,10 @@
 
 - 输出：学得的模型$f$
   $$
-  \mathcal{A}:\mathcal{F} \times \mathcal{M} \times \mathcal{D}.
+  \mathcal{A}:\mathcal{F} \times \mathcal{M} \times \mathcal{D} \rightarrow f
   $$
+  
+- 
 
 #### 经验风险最小化（Empirical Risk Minimization）
 
@@ -92,11 +101,20 @@ $$
 
 > 泛化风险：$\mathbb{E}_{(x, y) \in D}[loss(f(x), y)]$
 
-==假设所有==
+现实任务中，无法得知完整的数据分布，只能获取训练数据。
+
+假设所有训练样本都是独立地从这个分布中采样而得
+$$
+\min_{f \in \mathcal{F}} \sum_{i = 1}^n loss(f(x_i), y)
+$$
+
+> 经验风险：$\sum_{i = 1}^n loss(f(x_i), y)$
 
 > 泛化误差：在“未来”样本上的误差
 >
 > 经验误差：在训练集上的误差，亦称“训练误差”
+>
+> 泛化误差是越小越好的，但是经验误差不是，因为可能会出现过拟合。
 
 #### 过拟合（ovefitting） vs. 欠拟合（underfitting）
 
@@ -122,6 +140,7 @@ $$
 
 - 训练不足时，学习器拟合能力不强，偏差主导
 - 随着训练程度加深，学习器拟合能力逐渐增强，方差逐渐主导
+- 训练充足后，学习其的拟合能力很强，方差主导
 
 #### 归纳偏好（inductive bias）
 
@@ -145,7 +164,9 @@ $$
 
 最常用的评估方法。
 
-#### ==k-折交叉验证法==
+#### k-折交叉验证法
+
+对于一个训练集，均分为$k$份，每次取$1$份作为测试集，另外$k - 1$份作为训练集。
 
 #### 自助法
 
@@ -160,11 +181,37 @@ $$
 - 算法的参数：一般由人工设定，亦称“超参数”
 - 模型的参数：一般由学习确定
 
-#### 性能度量
+### 6. 性能度量
 
-- **错误率与精度：**
+- **回归任务常用均方误差：**
+  $$
+  E(f;D) = \frac{1}{m} \sum_{i = 1}^m (f(x_i) - y_i)^2
+  $$
 
-- ==**查准率与查全率：**==
+- 
+
+- **错误率：**
+  $$
+  E(f; D) = \frac{1}{m}\sum_{i = 1}^m \mathbb{I}(f(x_i) \neq y_i)
+  $$
+
+- **精度：**
+  $$
+  \begin{aligned}
+  acc(f;D) &= \frac{1}{m}\sum_{i = 1}^m \mathbb{I}(f(x_i) = y_i)\\
+  &= 1 - E(f;D)
+  \end{aligned}
+  $$
+
+- **查准率与查全率：**
+
+  分类结果混淆矩阵
+
+  |          | 预测结果 | 预测结果 |
+  | -------- | -------- | -------- |
+  | 真实情况 | 正例     | 反例     |
+  | 正例     | TP       | FN       |
+  | 反例     | FP       | TN       |
 
   - 查准率：$P=\frac{TP}{TP +FP}$
   - 查全率：$R=\frac{TP}{TP+TF}$
@@ -175,8 +222,16 @@ $$
 
 - **F1度量：**
   $$
-  F_{\beta} = \frac{(1 +\beta)^2 \times P \times R}{(\beta^2 \times P) + R} 
+  F_1 = \frac{2 \times P \times R}{P+R} = \frac{2\times TP}{\text{样例总数} + TP - TN}
   $$
+
+  $$
+  F_{\beta} = \frac{(1 +\beta)^2 \times P \times R}{(\beta^2 \times P) + R}
+  $$
+
+  - $\beta = 1$：标准$F_1$
+  - $\beta >1$：偏重查全率（逃犯信息检索）
+  - $\beta < 1$：偏重查准率（商品推荐系统）
 
 ## 二、机器学习具有坚实的理论基础
 
