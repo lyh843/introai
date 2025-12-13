@@ -1,0 +1,1041 @@
+TIME: 2025-12-10 21:48:37.712040
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Pacman,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Ghost1,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [2, 1], 'ghost_pos': [[3, 5]], 'score': 0.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+首先，我们分析当前的游戏数据：
+
+### 1. 当前布局信息
+- `layout_list` 表示地图的每个格子状态。
+- `pacman_pos = [2, 1]`：表示吃豆人当前位置是 (2, 1)。
+- `ghost_pos = [[3, 5]]`：表示鬼魂的位置是 (3, 5)。
+- `legal_actions = ['West', 'Stop', 'East']`：合法的操作是西、停止、东。
+
+注意：根据规则，大多数情况下不会选择 "Stop"，所以我们可以忽略它。
+
+---
+
+### 2. 分析可选动作
+
+#### a. West（向西）：
+- 新位置：[1, 1]
+- 检查是否是墙？从 layout_list 中看，(1,1) 是 Empty，可以走。
+- 到鬼魂 (3,5) 的距离：|1 - 3| + |1 - 5| = 2 + 4 = **6**
+- 到食物的距离：目前地图中还有两个食物，分别在 (1,5) 和 (3,3)。  
+  - 到 (1,5) 的距离：|1 - 1| + |1 - 5| = 0 + 4 = **4**  
+  - 到 (3,3) 的距离：|1 - 3| + |1 - 3| = 2 + 2 = **4**
+
+→ 距离鬼魂较远（6），且到食物的距离为 4。
+
+#### b. East（向东）：
+- 新位置：[3, 1]
+- 检查是否是墙？从 layout_list 中看，(3,1) 是 Empty，可以走。
+- 到鬼魂 (3,5) 的距离：|3 - 3| + |1 - 5| = 0 + 4 = **4**
+- 到食物的距离：
+  - 到 (1,5)：|3 - 1| + |1 - 5| = 2 + 4 = **6**
+  - 到 (3,3)：|3 - 3| + |1 - 3| = 0 + 2 = **2**
+
+→ 距离鬼魂较近（4），但到一个食物（3,3）只有 2 步。
+
+#### c. Stop（停止）：
+- 不移动，不推荐，因为会浪费时间，而且不能吃到食物。
+
+---
+
+### 3. 根据规则判断
+
+- **规则 2**：如果所有动作距离鬼魂都小于等于 3，则选择远离鬼魂的路径。
+  - West: 6 > 3 → 可以考虑
+  - East: 4 ≤ 3 → 不推荐
+- **规则 3**：如果有动作到食物的距离为 0，直接选择。
+  - 当前没有动作能一步到达食物，所以不适用。
+- **规则 4**：不到万不得已，不选反方向。
+  - 无反方向问题。
+- **规则 5**：最后没得选，就选离鬼魂最远的。
+
+---
+
+### 4. 综合判断
+
+- **West**：距离鬼魂 6，到食物 4，安全且有潜力。
+- **East**：距离鬼魂 4，虽然靠近食物，但太危险。
+- **Stop**：不推荐。
+
+因此，最佳选择是 **West**。
+
+---
+
+### 5. 检验是否碰到鬼魂
+
+- 新位置 (1,1)，鬼魂在 (3,5)，两者距离为 6，不会碰到。
+
+---
+
+### 最终答案：
+
+<action>West</action>
+--- ACTION ---
+West
+------------------------------
+TIME: 2025-12-10 21:48:46.850566
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Pacman,(2,1)=Empty,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Ghost1,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [1, 1], 'ghost_pos': [[2, 5]], 'score': -1.0, 'food_count': 2, 'legal_actions': ['Stop', 'East', 'South']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+首先，我们分析当前的游戏数据：
+
+### 1. 当前布局信息
+- `layout_list` 中的每个字符串表示一个格子的状态。
+- 我们可以从中提取出地图的结构和食物、鬼魂、吃豆人的位置。
+
+从 `layout_list` 中我们可以得到以下关键信息：
+- **Pacman 的位置**：在 `(1,1)`（即 `[1,1]`）。
+- **Ghost 的位置**：在 `(2,5)`（即 `[2,5]`）。
+- **食物的位置**：
+  - `(3,3)`
+  - `(1,5)`
+
+### 2. 可用动作
+`legal_actions` 是：`['Stop', 'East', 'South']`  
+注意：根据规则，我们应排除 `Stop`，只考虑 `East` 和 `South`。
+
+### 3. 分析每个合法动作后的新位置及距离
+
+#### 动作：East（东）
+- 新位置：`(2,1)`
+- 检查是否是墙？`layout_list[1]` 中 `(2,1)=Empty` → 可以走。
+- 到食物的最小距离：
+  - `(3,3)`：`|2-3| + |1-3| = 1 + 2 = 3`
+  - `(1,5)`：`|2-1| + |1-5| = 1 + 4 = 5`
+  - 最小距离为 **3**
+- 到 Ghost 的距离：
+  - `(2,5)`：`|2-2| + |1-5| = 0 + 4 = 4`
+- 结论：到 Ghost 距离为 **4**，到食物最近为 **3**
+
+#### 动作：South（南）
+- 新位置：`(1,2)`
+- 检查是否是墙？`layout_list[2]` 中 `(1,2)=Empty` → 可以走。
+- 到食物的最小距离：
+  - `(3,3)`：`|1-3| + |2-3| = 2 + 1 = 3`
+  - `(1,5)`：`|1-1| + |2-5| = 0 + 3 = 3`
+  - 最小距离为 **3**
+- 到 Ghost 的距离：
+  - `(2,5)`：`|1-2| + |2-5| = 1 + 3 = 4`
+- 结论：到 Ghost 距离为 **4**，到食物最近为 **3**
+
+### 4. 比较两个动作
+- 两个动作都满足：
+  - 到 Ghost 的距离为 **4** > 3 → 安全
+  - 到食物的最小距离为 **3**
+
+### 5. 是否有更优选择？
+- 无动作到食物的距离为 0，所以不选直接到达食物的路径。
+- 两者距离相同，但没有反方向问题（因为只有 East 和 South）。
+
+### 6. 最终选择
+- 任选其一即可。我们选择 **East**，因为它更靠近食物（虽然距离一样，但可能更有利于后续行动）。
+
+---
+
+### ✅ 检验
+- 选择 `East` 后的位置是 `(2,1)`，不是墙，也不是 ghost 的位置。
+- 到 ghost 的距离是 4，安全。
+- 到食物的最小距离是 3，合理。
+
+---
+
+<action>East</action>
+--- ACTION ---
+East
+------------------------------
+TIME: 2025-12-10 21:48:55.149946
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Pacman,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Ghost1,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [2, 1], 'ghost_pos': [[1, 5]], 'score': -2.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+### 第一步：分析当前游戏数据
+
+根据提供的数据，我们有以下信息：
+
+- **Pacman 的位置**：[2, 1]
+- **Ghost 的位置**：[[1, 5]]
+- **合法操作**：['West', 'Stop', 'East']
+- **食物数量**：2
+- **分数**：-2.0（需要提高）
+
+---
+
+### 第二步：计算每个合法动作后的新位置
+
+#### 1. West（向西移动）：
+- 新位置：[1, 1]
+- 检查是否是墙？`layout_list[1]` 中 `(1,1)=Empty` → 可以走。
+
+#### 2. East（向东移动）：
+- 新位置：[3, 1]
+- 检查是否是墙？`layout_list[1]` 中 `(3,1)=Empty` → 可以走。
+
+#### 3. Stop（停止）：
+- 不改变位置，但根据规则，除非万不得已不选 `Stop`。
+
+---
+
+### 第三步：计算新位置到 Ghost 和 Food 的距离
+
+#### Ghost 位置：[1, 5]
+
+##### 1. West 后的位置 [1, 1]：
+- 到 Ghost 的距离：|1 - 1| + |1 - 5| = 0 + 4 = **4**
+- 到 Food 的距离：
+  - 食物在 (3,3) 和 (5,2)
+    - 到 (3,3)：|1 - 3| + |1 - 3| = 2 + 2 = **4**
+    - 到 (5,2)：|1 - 5| + |1 - 2| = 4 + 1 = **5**
+  - 最小距离为 **4**
+
+##### 2. East 后的位置 [3, 1]：
+- 到 Ghost 的距离：|3 - 1| + |1 - 5| = 2 + 4 = **6**
+- 到 Food 的距离：
+  - 到 (3,3)：|3 - 3| + |1 - 3| = 0 + 2 = **2**
+  - 到 (5,2)：|3 - 5| + |1 - 2| = 2 + 1 = **3**
+  - 最小距离为 **2**
+
+---
+
+### 第四步：根据规则选择最佳行动
+
+- **West**：到 Ghost 距离为 4，到 Food 最小距离为 4。
+- **East**：到 Ghost 距离为 6，到 Food 最小距离为 2。
+- **Stop**：不选。
+
+根据规则：
+- 如果存在一个动作到 Ghost 的距离 > 3，且该动作到 Food 的距离为 0，则优先选这个动作。
+- 在本例中，**East** 到 Food 的最小距离为 2（不是 0），但比 West 更近。
+- 且 **East** 到 Ghost 的距离为 6 > 3，说明可以安全地选择它。
+
+---
+
+### 第五步：验证是否不会碰到 Ghost
+
+- Pacman 从 [2,1] 移动到 [3,1]，而 Ghost 在 [1,5]，两者之间没有直接接触的可能。
+- 所以 **East** 是安全的。
+
+---
+
+### ✅ 最终答案：
+
+<action>East</action>
+--- ACTION ---
+East
+------------------------------
+TIME: 2025-12-10 21:49:04.156089
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Empty,(3,1)=Pacman,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Ghost1,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [3, 1], 'ghost_pos': [[1, 4]], 'score': -3.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+首先，我们分析当前的游戏数据：
+
+### 1. 当前布局信息
+- `layout_list` 中的每个字符串表示一个格子的状态。
+- 从 `layout_list` 可以看出：
+  - Pacman 的位置是 `(3,1)`（即 x=3, y=1）。
+  - Ghost1 的位置是 `(1,4)`（即 x=1, y=4）。
+  - 食物的位置有：
+    - `(3,3)`（x=3, y=3）
+    - `(1,5)`（x=1, y=5）
+
+### 2. 当前坐标
+- `pacman_pos`: [3, 1]
+- `ghost_pos`: [[1, 4]]
+- `food_count`: 2
+
+### 3. 合法操作
+- `legal_actions`: ['West', 'Stop', 'East']
+
+注意：根据规则，大多数情况下不会选择 `Stop`，所以我们可以排除它。
+
+---
+
+### 4. 分析合法操作后的新位置和距离
+
+#### A. West (向西移动)
+- 新位置: [2, 1]
+- 检查是否是墙？`layout_list[1]` 中 `(2,1)=Empty` → 可以走。
+- 到食物的最小距离：
+  - 到 `(3,3)`: |2-3| + |1-3| = 1 + 2 = 3
+  - 到 `(1,5)`: |2-1| + |1-5| = 1 + 4 = 5
+  - 最小距离为 **3**
+- 到 ghost 的距离:
+  - `(1,4)` → |2-1| + |1-4| = 1 + 3 = **4**
+
+#### B. East (向东移动)
+- 新位置: [4, 1]
+- 检查是否是墙？`layout_list[1]` 中 `(4,1)=Empty` → 可以走。
+- 到食物的最小距离：
+  - 到 `(3,3)`: |4-3| + |1-3| = 1 + 2 = 3
+  - 到 `(1,5)`: |4-1| + |1-5| = 3 + 4 = 7
+  - 最小距离为 **3**
+- 到 ghost 的距离:
+  - `(1,4)` → |4-1| + |1-4| = 3 + 3 = **6**
+
+#### C. Stop (停止)
+- 不推荐，因为不能提高分数或吃豆子，且没有意义。
+
+---
+
+### 5. 根据规则判断最佳行动
+
+- 所有合法动作中，**West** 和 **East** 的到 ghost 的距离分别为 4 和 6，都大于 3。
+- 两者到 food 的最小距离都是 3，但 **East** 更远一些（6 > 4），更安全。
+- 且 **East** 是离 ghost 更远的方向，符合“如果存在有 actions 距离 ghost 的距离大于 3，则找计算后的位置到 food 的距离等于 0”的条件（虽然不是 0，但可以优先选更远的）。
+- 不到万不得已不选反方向（这里没有反方向的问题）。
+
+---
+
+### 6. 检验是否碰到 ghost
+- West: 到 ghost 的距离是 4，安全。
+- East: 到 ghost 的距离是 6，安全。
+
+---
+
+### ✅ 最终结论
+
+选择 **East**，因为它：
+- 离 ghost 更远（6 > 4）
+- 到 food 的距离相同（3）
+- 安全，不会碰到 ghost
+
+---
+
+<action>East</action>
+--- ACTION ---
+East
+------------------------------
+TIME: 2025-12-10 21:49:14.348317
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Empty,(3,1)=Empty,(4,1)=Pacman,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Ghost1,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [4, 1], 'ghost_pos': [[1, 3]], 'score': -4.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+首先，我们分析当前的游戏数据：
+
+- **Pacman 的位置**：[4, 1]
+- **Ghost 的位置**：[[1, 3]]
+- **合法操作**：['West', 'Stop', 'East']
+- **食物数量**：2
+- **当前分数**：-4.0
+
+---
+
+### 第一步：确定所有合法操作后的新位置
+
+我们逐个分析每个合法动作后 Pacman 的新位置：
+
+#### 1. West（向西）：
+- 当前位置是 [4, 1]，向西移动后变为 [3, 1]
+- 检查是否是墙：根据 layout_list 中的描述，(3,1) 是 Empty，可以走。
+
+#### 2. Stop（停止）：
+- 不移动，位置仍为 [4, 1]
+
+#### 3. East（向东）：
+- 当前位置是 [4, 1]，向东移动后变为 [5, 1]
+- 检查是否是墙：根据 layout_list 中的描述，(5,1) 是 Empty，可以走。
+
+---
+
+### 第二步：计算每个动作后的位置到 Ghost 和 Food 的距离
+
+#### Ghost 的位置是 [1, 3]
+
+##### 1. West 后的位置 [3, 1]：
+- 到 Ghost 的距离：|3 - 1| + |1 - 3| = 2 + 2 = **4**
+- 到 Food 的距离：
+  - 食物在 (3,3) 和 (1,5)
+  - 到 (3,3) 的距离：|3 - 3| + |1 - 3| = 0 + 2 = **2**
+  - 到 (1,5) 的距离：|3 - 1| + |1 - 5| = 2 + 4 = **6**
+  - 最小距离是 **2**
+
+##### 2. Stop 后的位置 [4, 1]：
+- 到 Ghost 的距离：|4 - 1| + |1 - 3| = 3 + 2 = **5**
+- 到 Food 的距离：
+  - 到 (3,3) 的距离：|4 - 3| + |1 - 3| = 1 + 2 = **3**
+  - 到 (1,5) 的距离：|4 - 1| + |1 - 5| = 3 + 4 = **7**
+  - 最小距离是 **3**
+
+##### 3. East 后的位置 [5, 1]：
+- 到 Ghost 的距离：|5 - 1| + |1 - 3| = 4 + 2 = **6**
+- 到 Food 的距离：
+  - 到 (3,3) 的距离：|5 - 3| + |1 - 3| = 2 + 2 = **4**
+  - 到 (1,5) 的距离：|5 - 1| + |1 - 5| = 4 + 4 = **8**
+  - 最小距离是 **4**
+
+---
+
+### 第三步：根据规则筛选最佳行动
+
+- 所有动作中，**West** 到 Ghost 的距离是 **4**，大于 3，满足“存在有 actions 距离 ghost 的距离大于 3”的条件。
+- 在这些动作中，**West** 到 food 的最小距离是 **2**，不是 0，但它是目前最接近 food 的动作。
+- **Stop** 和 **East** 的距离都比 West 更远，且没有更优的选择。
+
+---
+
+### 第四步：检查是否可能碰到 Ghost
+
+- **West** 后的位置是 [3, 1]，而 Ghost 在 [1, 3]，两者不相邻，不会碰到 Ghost。
+
+---
+
+### 最终结论
+
+根据规则和分析，**West** 是最优选择。
+
+<action>West</action>
+--- ACTION ---
+West
+------------------------------
+TIME: 2025-12-10 21:49:27.046503
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Empty,(3,1)=Pacman,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Ghost1,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [3, 1], 'ghost_pos': [[1, 2]], 'score': -5.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+首先，我们分析当前的游戏数据：
+
+- **Pacman 的位置**：[3, 1]
+- **Ghost 的位置**：[[1, 2]]
+- **合法操作**：['West', 'Stop', 'East']
+- **食物数量**：2
+- **地图布局**：从 layout_list 可以看出，Pacman 在 (3,1)，周围有墙和空地。
+
+---
+
+### 第一步：计算每个合法动作后的新位置
+
+#### 1. West（向西）：
+- 新位置：[2, 1]
+- 检查是否是墙？根据 layout_list 中的 "(2,1)=Empty"，不是墙。
+- 所以这个动作是合法的。
+
+#### 2. Stop（停止）：
+- 不移动，位置不变 [3, 1]。
+- 但根据规则，一般不选 Stop，除非没有其他选择。
+
+#### 3. East（向东）：
+- 新位置：[4, 1]
+- 检查是否是墙？根据 layout_list 中的 "(4,1)=Empty"，不是墙。
+- 所以这个动作也是合法的。
+
+---
+
+### 第二步：计算每个动作后的位置到 Ghost 和 Food 的距离
+
+#### Ghost 位置：[1, 2]
+
+##### 1. West 后的位置 [2, 1]：
+- 到 Ghost 的距离：|2 - 1| + |1 - 2| = 1 + 1 = **2**
+- 到 Food 的距离：
+  - 食物在 (3,3) 和 (1,5)
+  - 到 (3,3) 的距离：|2 - 3| + |1 - 3| = 1 + 2 = **3**
+  - 到 (1,5) 的距离：|2 - 1| + |1 - 5| = 1 + 4 = **5**
+  - 最小距离为 **3**
+
+##### 2. East 后的位置 [4, 1]：
+- 到 Ghost 的距离：|4 - 1| + |1 - 2| = 3 + 1 = **4**
+- 到 Food 的距离：
+  - 到 (3,3)：|4 - 3| + |1 - 3| = 1 + 2 = **3**
+  - 到 (1,5)：|4 - 1| + |1 - 5| = 3 + 4 = **7**
+  - 最小距离为 **3**
+
+##### 3. Stop（原地不动）：
+- 到 Ghost 的距离：|3 - 1| + |1 - 2| = 2 + 1 = **3**
+- 到 Food 的距离：
+  - 到 (3,3)：|3 - 3| + |1 - 3| = 0 + 2 = **2**
+  - 到 (1,5)：|3 - 1| + |1 - 5| = 2 + 4 = **6**
+  - 最小距离为 **2**
+
+---
+
+### 第三步：根据规则筛选最佳动作
+
+- **规则 3**：如果存在一个动作到 food 的距离为 0，则直接选择该动作。
+  - 当前没有动作到 food 的距离为 0，所以这条规则不适用。
+
+- **规则 2**：如果所有动作到 ghost 的距离都小于等于 3，那么选择远离 ghost 的路径。
+  - West: 距离 2
+  - East: 距离 4
+  - Stop: 距离 3
+  - 有动作（East）到 ghost 的距离大于 3，所以可以继续看下一步。
+
+- **规则 1**：找一个动作，其到 food 的距离最小，同时到 ghost 的距离尽可能大。
+  - West: 到 food 最小距离 3，到 ghost 距离 2
+  - East: 到 food 最小距离 3，到 ghost 距离 4
+  - Stop: 到 food 最小距离 2，到 ghost 距离 3
+  - 优先考虑到 food 距离小且到 ghost 距离大的动作。
+
+- **规则 4**：不到万不得已，不选上一步的反方向。
+  - 上一步没有动作，所以这条规则不适用。
+
+- **规则 5**：最后没得选，就选离 ghost 最远的。
+  - East 是唯一一个到 ghost 距离 > 3 的动作，且到 food 的距离也较小。
+
+---
+
+### 第四步：最终选择
+
+- **East** 是唯一一个到 ghost 的距离大于 3 的动作，且到 food 的距离为 3，是一个合理的选择。
+- 它不会让 Pacman 太靠近 ghost，同时还能接近食物。
+
+---
+
+### 检验：是否可能碰到 ghost？
+
+- East 后的位置是 [4,1]，而 ghost 在 [1,2]。
+- 两者之间的曼哈顿距离是 4，足够远，不会碰到 ghost。
+
+---
+
+### 最终答案：
+
+<action>East</action>
+--- ACTION ---
+East
+------------------------------
+TIME: 2025-12-10 21:49:36.727028
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Ghost1,(2,1)=Empty,(3,1)=Empty,(4,1)=Pacman,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [4, 1], 'ghost_pos': [[1, 1]], 'score': -6.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+首先，我们分析当前的游戏数据：
+
+- **pacman_pos**: [4, 1]  
+- **ghost_pos**: [[1, 1]]  
+- **legal_actions**: ['West', 'Stop', 'East']  
+- **food_count**: 2（说明还有两个食物未吃）  
+- **layout_list** 中的食物位置：  
+  - (1,5) = Food  
+  - (3,3) = Food  
+
+---
+
+### 第一步：计算每个合法动作后的新位置
+
+#### 1. West（向西移动）
+- 当前位置是 [4, 1]
+- West 意味着 x 减少 1 → 新位置为 [3, 1]
+
+检查是否是墙：
+- 根据 layout_list 的第二行：'(3,1)=Empty' → 可以走。
+
+#### 2. East（向东移动）
+- 东意味着 x 增加 1 → 新位置为 [5, 1]
+
+检查是否是墙：
+- 根据 layout_list 的第二行：'(5,1)=Empty' → 可以走。
+
+#### 3. Stop（停止）
+- 不移动，位置不变 [4, 1]。但根据规则，一般不选 Stop，除非没有其他选择。
+
+---
+
+### 第二步：计算新位置到 ghost 和 food 的距离
+
+#### Ghost 位置：[1, 1]
+
+##### 1. West 后的位置 [3, 1]
+- 到 ghost 的距离：|3 - 1| + |1 - 1| = 2
+- 到 food 的距离：
+  - (1,5): |3 - 1| + |1 - 5| = 2 + 4 = 6
+  - (3,3): |3 - 3| + |1 - 3| = 0 + 2 = 2
+- 最小距离：2
+
+##### 2. East 后的位置 [5, 1]
+- 到 ghost 的距离：|5 - 1| + |1 - 1| = 4
+- 到 food 的距离：
+  - (1,5): |5 - 1| + |1 - 5| = 4 + 4 = 8
+  - (3,3): |5 - 3| + |1 - 3| = 2 + 2 = 4
+- 最小距离：4
+
+##### 3. Stop（不移动）[4, 1]
+- 到 ghost 的距离：|4 - 1| + |1 - 1| = 3
+- 到 food 的距离：
+  - (1,5): |4 - 1| + |1 - 5| = 3 + 4 = 7
+  - (3,3): |4 - 3| + |1 - 3| = 1 + 2 = 3
+- 最小距离：3
+
+---
+
+### 第三步：根据规则筛选动作
+
+- 所有动作中，**West** 到 ghost 的距离是 2，**East** 是 4，**Stop** 是 3。
+- 存在动作（East）到 ghost 的距离大于 3，所以可以考虑找一个能吃到食物的路径。
+- 在所有动作中，**West** 到 food 的最小距离是 2（靠近 (3,3)），而 **East** 到 food 的最小距离是 4。
+- 所以 **West** 更优，因为它更接近食物。
+
+---
+
+### 第四步：验证是否安全
+
+- West 后的位置是 [3, 1]，该位置不是墙，也不是 ghost 的位置（ghost 在 [1,1]）。
+- 所以不会碰到 ghost。
+
+---
+
+### 最终结论
+
+选择 **West**，因为：
+- 它离食物更近；
+- 离 ghost 的距离是 2，小于 3，但存在其他动作（如 East）离 ghost 更远；
+- 且不会碰到 ghost。
+
+---
+
+<action>West</action>
+--- ACTION ---
+West
+------------------------------
+TIME: 2025-12-10 21:49:37.143990
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Ghost1,(3,1)=Pacman,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [3, 1], 'ghost_pos': [[2, 1]], 'score': -7.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+<action>East</action>
+--- ACTION ---
+East
+------------------------------
+TIME: 2025-12-10 21:49:44.436932
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Empty,(3,1)=Ghost1,(4,1)=Pacman,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [4, 1], 'ghost_pos': [[3, 1]], 'score': -8.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+首先，我们分析当前的游戏数据：
+
+- **pacman_pos**: [4, 1]
+- **ghost_pos**: [[3, 1]]
+- **legal_actions**: ['West', 'Stop', 'East']
+- **food_count**: 2
+- **layout_list**:
+  - (1,1)=Empty, (4,1)=Pacman, (3,1)=Ghost1
+  - (3,3)=Food, (1,5)=Food
+
+---
+
+### 第一步：计算每个合法动作后的新位置
+
+#### 1. West（向西移动）：
+- 新位置: [3, 1]（与ghost的位置相同）
+- ❌ 不可选，因为会撞到ghost。
+
+#### 2. Stop（停止）：
+- 位置不变：[4, 1]
+- 虽然不会撞到ghost，但“stop”不是最优选择，除非没有其他选择。
+- ✅ 可以考虑，但优先级较低。
+
+#### 3. East（向东移动）：
+- 新位置: [5, 1]
+- 检查是否是墙或ghost：
+  - (5,1) = Empty → 合法
+- ✅ 可选
+
+---
+
+### 第二步：计算每个合法动作后到food和ghost的距离
+
+#### 1. West（不可选，已排除）
+
+#### 2. Stop（位置不变）：
+- 到ghost距离：|4-3| + |1-1| = 1
+- 到food距离：
+  - (3,3): |4-3| + |1-3| = 1 + 2 = 3
+  - (1,5): |4-1| + |1-5| = 3 + 4 = 7
+  - 最小距离为 3
+- ✅ 可选，但不是最优
+
+#### 3. East（位置变为 [5, 1]）：
+- 到ghost距离：|5-3| + |1-1| = 2
+- 到food距离：
+  - (3,3): |5-3| + |1-3| = 2 + 2 = 4
+  - (1,5): |5-1| + |1-5| = 4 + 4 = 8
+  - 最小距离为 4
+- ✅ 可选，且比stop更优
+
+---
+
+### 第三步：根据规则判断最佳行动
+
+- 所有合法动作中，**West** 会撞ghost，排除。
+- **Stop** 是合法的，但不是最优。
+- **East** 是唯一一个能远离ghost（距离为2），同时还能接近食物（最小距离为4）的动作。
+
+---
+
+### 第四步：检验是否安全
+
+- **East** 的新位置是 [5, 1]，检查是否是墙或ghost：
+  - (5,1) = Empty → 安全
+- ✅ 无碰撞风险
+
+---
+
+### 最终答案：
+
+<action>East</action>
+--- ACTION ---
+East
+------------------------------
+TIME: 2025-12-10 21:49:44.840006
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务             1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的豆子吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Empty,(3,1)=Empty,(4,1)=Ghost1,(5,1)=Pacman,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [5, 1], 'ghost_pos': [[4, 1]], 'score': -9.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'South']}'''
+        
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        你的思路应该是
+        1. 从'legal_actions'中，分别计算操作这些actions后到达的位置，以及新的位置到所有food、所有ghost的距离，分别取最小距离作为
+            这个actions后到food和ghost的距离。
+        2. 如果所有actions距离ghost的距离都小于等于3，那么你应该果断选择远离ghost的路径。
+        3. 如果存在有actions距离ghost的距离大于3，那么找计算后的位置到food的距离等于0，则直接选择这个actions
+        4. 不到万不得已，不选上一步的反方向。
+        5. 如果最后没得选，则选一个离ghost距离最远的，总之不能选stop。
+        其中以上的距离全部是|x_1 - x| + |y_1 - y|。
+        请逐步推理，再给出可选的actions，你的答案只能是第一步。
+        然后在给出答案前，请对答案进行检验，确定不会碰到ghosts
+        好的请遵守游戏规则，并且牢记你的两个目标，完成任务吧。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+<action>West</action>
+--- ACTION ---
+West
+------------------------------

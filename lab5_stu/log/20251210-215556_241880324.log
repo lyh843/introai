@@ -1,0 +1,531 @@
+TIME: 2025-12-10 21:55:57.554160
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务：
+        
+        *** 游戏目标（优先级从高到低） ***
+            1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的food吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Pacman,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Ghost1,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [2, 1], 'ghost_pos': [[3, 5]], 'score': 0.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        *** 数据解析 ***
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        *** 决策思路 ***
+
+        于每一个合法的行动 A (Action)，计算其执行后的新位置 P_new = [x_new, y_new]。使用曼哈顿距离 $D_man(P_1, P_2) = |x_1 - x_2| + |y_1 - y_2|$ 进行距离计算。
+
+        计算以下三个关键指标：
+        1. **最小幽灵距离 ($D_G$)：** $D_G = \min_g \in ghost\_pos D_man(P_	extnew, g)$
+        2. **最小食物距离 ($D_F$)：** $D_F = \min_f \in 	extfood\_pos D_man(P_	extnew, f)$
+        3. **避免折返惩罚 ($C_	extturn$)：** 如果行动 A 是 'last_action' 的反方向，则 $C_	extturn = 	extHigh\_Penalty$；否则 $C_	extturn = 0$。
+
+        **行动评分公式 (Score(A))：**
+
+        Score(A) = $W_G \cdot f_G(D_G) + W_F \cdot f_F(D_F) - C_	extturn$
+        其中：
+        * **安全函数 $f_G(D_G)$ (逃跑奖励):**
+            * 如果 $D_G \le 3$ (危险区)，$f_G(D_G) = D_G^2$ (距离越远，奖励越大，指数级逃跑)。
+            * 如果 $D_G > 3$ (安全区)，$f_G(D_G) = 0$ (不奖励远离，专注于吃豆)。
+        * **觅食函数 $f_F(D_F)$ (靠近奖励):**
+            * $f_F(D_F) = 1 / (D_F + 1)$ (距离越近，奖励越大)。
+        * **权重:** $W_G$ (安全权重) 设为 **100** (生存优先)；$W_F$ (食物权重) 设为 **10**。
+
+        *** 决策步骤 ***
+
+        1.  **解析数据：** 转换 `layout_list` 为网格地图，确定所有 `food_pos`。
+        2.  **过滤非法动作：** 移除 'Stop'。
+        3.  **计算评分：** 对所有合法的行动，计算 $P_	extnew$ 并代入评分公式 $Score(A)$。
+        4.  **最终选择：** 选择 $Score(A)$ 最高的行动。如果最高得分的行动仍然导致 $D_G = 1$ (即下一步将撞到幽灵)，则退回到次高分的安全行动。
+
+        请你遵循这个评分系统，逐步推理，并给出最终行动。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+<action>West</action>
+--- ACTION ---
+West
+------------------------------
+TIME: 2025-12-10 21:55:58.039869
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务：
+        
+        *** 游戏目标（优先级从高到低） ***
+            1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的food吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Pacman,(2,1)=Empty,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Ghost1,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [1, 1], 'ghost_pos': [[2, 5]], 'score': -1.0, 'food_count': 2, 'legal_actions': ['Stop', 'East', 'South']}'''
+        
+        *** 数据解析 ***
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        *** 决策思路 ***
+
+        于每一个合法的行动 A (Action)，计算其执行后的新位置 P_new = [x_new, y_new]。使用曼哈顿距离 $D_man(P_1, P_2) = |x_1 - x_2| + |y_1 - y_2|$ 进行距离计算。
+
+        计算以下三个关键指标：
+        1. **最小幽灵距离 ($D_G$)：** $D_G = \min_g \in ghost\_pos D_man(P_	extnew, g)$
+        2. **最小食物距离 ($D_F$)：** $D_F = \min_f \in 	extfood\_pos D_man(P_	extnew, f)$
+        3. **避免折返惩罚 ($C_	extturn$)：** 如果行动 A 是 'last_action' 的反方向，则 $C_	extturn = 	extHigh\_Penalty$；否则 $C_	extturn = 0$。
+
+        **行动评分公式 (Score(A))：**
+
+        Score(A) = $W_G \cdot f_G(D_G) + W_F \cdot f_F(D_F) - C_	extturn$
+        其中：
+        * **安全函数 $f_G(D_G)$ (逃跑奖励):**
+            * 如果 $D_G \le 3$ (危险区)，$f_G(D_G) = D_G^2$ (距离越远，奖励越大，指数级逃跑)。
+            * 如果 $D_G > 3$ (安全区)，$f_G(D_G) = 0$ (不奖励远离，专注于吃豆)。
+        * **觅食函数 $f_F(D_F)$ (靠近奖励):**
+            * $f_F(D_F) = 1 / (D_F + 1)$ (距离越近，奖励越大)。
+        * **权重:** $W_G$ (安全权重) 设为 **100** (生存优先)；$W_F$ (食物权重) 设为 **10**。
+
+        *** 决策步骤 ***
+
+        1.  **解析数据：** 转换 `layout_list` 为网格地图，确定所有 `food_pos`。
+        2.  **过滤非法动作：** 移除 'Stop'。
+        3.  **计算评分：** 对所有合法的行动，计算 $P_	extnew$ 并代入评分公式 $Score(A)$。
+        4.  **最终选择：** 选择 $Score(A)$ 最高的行动。如果最高得分的行动仍然导致 $D_G = 1$ (即下一步将撞到幽灵)，则退回到次高分的安全行动。
+
+        请你遵循这个评分系统，逐步推理，并给出最终行动。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+<action>East</action>
+--- ACTION ---
+East
+------------------------------
+TIME: 2025-12-10 21:55:58.455135
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务：
+        
+        *** 游戏目标（优先级从高到低） ***
+            1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的food吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Pacman,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Ghost1,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [2, 1], 'ghost_pos': [[1, 5]], 'score': -2.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        *** 数据解析 ***
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        *** 决策思路 ***
+
+        于每一个合法的行动 A (Action)，计算其执行后的新位置 P_new = [x_new, y_new]。使用曼哈顿距离 $D_man(P_1, P_2) = |x_1 - x_2| + |y_1 - y_2|$ 进行距离计算。
+
+        计算以下三个关键指标：
+        1. **最小幽灵距离 ($D_G$)：** $D_G = \min_g \in ghost\_pos D_man(P_	extnew, g)$
+        2. **最小食物距离 ($D_F$)：** $D_F = \min_f \in 	extfood\_pos D_man(P_	extnew, f)$
+        3. **避免折返惩罚 ($C_	extturn$)：** 如果行动 A 是 'last_action' 的反方向，则 $C_	extturn = 	extHigh\_Penalty$；否则 $C_	extturn = 0$。
+
+        **行动评分公式 (Score(A))：**
+
+        Score(A) = $W_G \cdot f_G(D_G) + W_F \cdot f_F(D_F) - C_	extturn$
+        其中：
+        * **安全函数 $f_G(D_G)$ (逃跑奖励):**
+            * 如果 $D_G \le 3$ (危险区)，$f_G(D_G) = D_G^2$ (距离越远，奖励越大，指数级逃跑)。
+            * 如果 $D_G > 3$ (安全区)，$f_G(D_G) = 0$ (不奖励远离，专注于吃豆)。
+        * **觅食函数 $f_F(D_F)$ (靠近奖励):**
+            * $f_F(D_F) = 1 / (D_F + 1)$ (距离越近，奖励越大)。
+        * **权重:** $W_G$ (安全权重) 设为 **100** (生存优先)；$W_F$ (食物权重) 设为 **10**。
+
+        *** 决策步骤 ***
+
+        1.  **解析数据：** 转换 `layout_list` 为网格地图，确定所有 `food_pos`。
+        2.  **过滤非法动作：** 移除 'Stop'。
+        3.  **计算评分：** 对所有合法的行动，计算 $P_	extnew$ 并代入评分公式 $Score(A)$。
+        4.  **最终选择：** 选择 $Score(A)$ 最高的行动。如果最高得分的行动仍然导致 $D_G = 1$ (即下一步将撞到幽灵)，则退回到次高分的安全行动。
+
+        请你遵循这个评分系统，逐步推理，并给出最终行动。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+<action>West</action>
+--- ACTION ---
+West
+------------------------------
+TIME: 2025-12-10 21:55:58.911792
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务：
+        
+        *** 游戏目标（优先级从高到低） ***
+            1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的food吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Pacman,(2,1)=Empty,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Ghost1,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [1, 1], 'ghost_pos': [[1, 4]], 'score': -3.0, 'food_count': 2, 'legal_actions': ['Stop', 'East', 'South']}'''
+        
+        *** 数据解析 ***
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        *** 决策思路 ***
+
+        于每一个合法的行动 A (Action)，计算其执行后的新位置 P_new = [x_new, y_new]。使用曼哈顿距离 $D_man(P_1, P_2) = |x_1 - x_2| + |y_1 - y_2|$ 进行距离计算。
+
+        计算以下三个关键指标：
+        1. **最小幽灵距离 ($D_G$)：** $D_G = \min_g \in ghost\_pos D_man(P_	extnew, g)$
+        2. **最小食物距离 ($D_F$)：** $D_F = \min_f \in 	extfood\_pos D_man(P_	extnew, f)$
+        3. **避免折返惩罚 ($C_	extturn$)：** 如果行动 A 是 'last_action' 的反方向，则 $C_	extturn = 	extHigh\_Penalty$；否则 $C_	extturn = 0$。
+
+        **行动评分公式 (Score(A))：**
+
+        Score(A) = $W_G \cdot f_G(D_G) + W_F \cdot f_F(D_F) - C_	extturn$
+        其中：
+        * **安全函数 $f_G(D_G)$ (逃跑奖励):**
+            * 如果 $D_G \le 3$ (危险区)，$f_G(D_G) = D_G^2$ (距离越远，奖励越大，指数级逃跑)。
+            * 如果 $D_G > 3$ (安全区)，$f_G(D_G) = 0$ (不奖励远离，专注于吃豆)。
+        * **觅食函数 $f_F(D_F)$ (靠近奖励):**
+            * $f_F(D_F) = 1 / (D_F + 1)$ (距离越近，奖励越大)。
+        * **权重:** $W_G$ (安全权重) 设为 **100** (生存优先)；$W_F$ (食物权重) 设为 **10**。
+
+        *** 决策步骤 ***
+
+        1.  **解析数据：** 转换 `layout_list` 为网格地图，确定所有 `food_pos`。
+        2.  **过滤非法动作：** 移除 'Stop'。
+        3.  **计算评分：** 对所有合法的行动，计算 $P_	extnew$ 并代入评分公式 $Score(A)$。
+        4.  **最终选择：** 选择 $Score(A)$ 最高的行动。如果最高得分的行动仍然导致 $D_G = 1$ (即下一步将撞到幽灵)，则退回到次高分的安全行动。
+
+        请你遵循这个评分系统，逐步推理，并给出最终行动。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+<action>East</action>
+--- ACTION ---
+East
+------------------------------
+TIME: 2025-12-10 21:55:59.360540
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务：
+        
+        *** 游戏目标（优先级从高到低） ***
+            1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的food吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Empty,(2,1)=Pacman,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Ghost1,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [2, 1], 'ghost_pos': [[1, 3]], 'score': -4.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        *** 数据解析 ***
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        *** 决策思路 ***
+
+        于每一个合法的行动 A (Action)，计算其执行后的新位置 P_new = [x_new, y_new]。使用曼哈顿距离 $D_man(P_1, P_2) = |x_1 - x_2| + |y_1 - y_2|$ 进行距离计算。
+
+        计算以下三个关键指标：
+        1. **最小幽灵距离 ($D_G$)：** $D_G = \min_g \in ghost\_pos D_man(P_	extnew, g)$
+        2. **最小食物距离 ($D_F$)：** $D_F = \min_f \in 	extfood\_pos D_man(P_	extnew, f)$
+        3. **避免折返惩罚 ($C_	extturn$)：** 如果行动 A 是 'last_action' 的反方向，则 $C_	extturn = 	extHigh\_Penalty$；否则 $C_	extturn = 0$。
+
+        **行动评分公式 (Score(A))：**
+
+        Score(A) = $W_G \cdot f_G(D_G) + W_F \cdot f_F(D_F) - C_	extturn$
+        其中：
+        * **安全函数 $f_G(D_G)$ (逃跑奖励):**
+            * 如果 $D_G \le 3$ (危险区)，$f_G(D_G) = D_G^2$ (距离越远，奖励越大，指数级逃跑)。
+            * 如果 $D_G > 3$ (安全区)，$f_G(D_G) = 0$ (不奖励远离，专注于吃豆)。
+        * **觅食函数 $f_F(D_F)$ (靠近奖励):**
+            * $f_F(D_F) = 1 / (D_F + 1)$ (距离越近，奖励越大)。
+        * **权重:** $W_G$ (安全权重) 设为 **100** (生存优先)；$W_F$ (食物权重) 设为 **10**。
+
+        *** 决策步骤 ***
+
+        1.  **解析数据：** 转换 `layout_list` 为网格地图，确定所有 `food_pos`。
+        2.  **过滤非法动作：** 移除 'Stop'。
+        3.  **计算评分：** 对所有合法的行动，计算 $P_	extnew$ 并代入评分公式 $Score(A)$。
+        4.  **最终选择：** 选择 $Score(A)$ 最高的行动。如果最高得分的行动仍然导致 $D_G = 1$ (即下一步将撞到幽灵)，则退回到次高分的安全行动。
+
+        请你遵循这个评分系统，逐步推理，并给出最终行动。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+<action>West</action>
+--- ACTION ---
+West
+------------------------------
+TIME: 2025-12-10 21:56:08.542198
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务：
+        
+        *** 游戏目标（优先级从高到低） ***
+            1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的food吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Pacman,(2,1)=Empty,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Ghost1,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [1, 1], 'ghost_pos': [[1, 2]], 'score': -5.0, 'food_count': 2, 'legal_actions': ['Stop', 'East', 'South']}'''
+        
+        *** 数据解析 ***
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        *** 决策思路 ***
+
+        于每一个合法的行动 A (Action)，计算其执行后的新位置 P_new = [x_new, y_new]。使用曼哈顿距离 $D_man(P_1, P_2) = |x_1 - x_2| + |y_1 - y_2|$ 进行距离计算。
+
+        计算以下三个关键指标：
+        1. **最小幽灵距离 ($D_G$)：** $D_G = \min_g \in ghost\_pos D_man(P_	extnew, g)$
+        2. **最小食物距离 ($D_F$)：** $D_F = \min_f \in 	extfood\_pos D_man(P_	extnew, f)$
+        3. **避免折返惩罚 ($C_	extturn$)：** 如果行动 A 是 'last_action' 的反方向，则 $C_	extturn = 	extHigh\_Penalty$；否则 $C_	extturn = 0$。
+
+        **行动评分公式 (Score(A))：**
+
+        Score(A) = $W_G \cdot f_G(D_G) + W_F \cdot f_F(D_F) - C_	extturn$
+        其中：
+        * **安全函数 $f_G(D_G)$ (逃跑奖励):**
+            * 如果 $D_G \le 3$ (危险区)，$f_G(D_G) = D_G^2$ (距离越远，奖励越大，指数级逃跑)。
+            * 如果 $D_G > 3$ (安全区)，$f_G(D_G) = 0$ (不奖励远离，专注于吃豆)。
+        * **觅食函数 $f_F(D_F)$ (靠近奖励):**
+            * $f_F(D_F) = 1 / (D_F + 1)$ (距离越近，奖励越大)。
+        * **权重:** $W_G$ (安全权重) 设为 **100** (生存优先)；$W_F$ (食物权重) 设为 **10**。
+
+        *** 决策步骤 ***
+
+        1.  **解析数据：** 转换 `layout_list` 为网格地图，确定所有 `food_pos`。
+        2.  **过滤非法动作：** 移除 'Stop'。
+        3.  **计算评分：** 对所有合法的行动，计算 $P_	extnew$ 并代入评分公式 $Score(A)$。
+        4.  **最终选择：** 选择 $Score(A)$ 最高的行动。如果最高得分的行动仍然导致 $D_G = 1$ (即下一步将撞到幽灵)，则退回到次高分的安全行动。
+
+        请你遵循这个评分系统，逐步推理，并给出最终行动。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+### **步骤 1: 解析数据**
+
+从 `layout_list` 中解析出地图信息，确定所有食物位置和墙壁。
+
+- 墙壁 (Wall)：不能通过。
+- Pacman 的位置是 `(1,1)`。
+- Ghost 的位置是 `(1,2)`。
+- 食物的位置：
+  - `(3,3)`
+  - `(1,5)`
+
+### **步骤 2: 过滤非法动作**
+
+合法动作是：['Stop', 'East', 'South']  
+移除 'Stop'（因为大多数情况下不选择停止）。
+
+**合法动作列表：** ['East', 'South']
+
+### **步骤 3: 计算评分**
+
+#### **当前状态**
+- Pacman 位置：[1, 1]
+- Ghost 位置：[1, 2]
+- 上一步动作未知（假设为 "North" 或其他，但没有提供，所以 C_turn = 0）
+
+---
+
+#### **尝试行动：East**
+
+- 新位置：[2, 1]
+- 检查是否是墙？不是。
+- 计算 D_G（与 ghost 的曼哈顿距离）：
+  - [2,1] 到 [1,2] 的距离：|2-1| + |1-2| = 1 + 1 = 2
+- D_G = 2 → 属于危险区（D_G ≤ 3）
+  - f_G(D_G) = D_G² = 2² = 4
+- 计算 D_F（与食物的最小距离）：
+  - [2,1] 到 (3,3)：|2-3| + |1-3| = 1 + 2 = 3
+  - [2,1] 到 (1,5)：|2-1| + |1-5| = 1 + 4 = 5
+  - 最小距离 D_F = 3
+  - f_F(D_F) = 1 / (3 + 1) = 0.25
+- Score(A) = W_G * f_G + W_F * f_F - C_turn
+  - W_G = 100, W_F = 10
+  - Score = 100 * 4 + 10 * 0.25 - 0 = 400 + 2.5 = **402.5**
+
+---
+
+#### **尝试行动：South**
+
+- 新位置：[1, 2]
+- 检查是否是墙？不是。
+- 计算 D_G（与 ghost 的曼哈顿距离）：
+  - [1,2] 到 [1,2] 的距离：0
+- D_G = 0 → 危险区
+  - f_G(D_G) = 0² = 0
+- 计算 D_F（与食物的最小距离）：
+  - [1,2] 到 (3,3)：|1-3| + |2-3| = 2 + 1 = 3
+  - [1,2] 到 (1,5)：|1-1| + |2-5| = 0 + 3 = 3
+  - 最小距离 D_F = 3
+  - f_F(D_F) = 1 / (3 + 1) = 0.25
+- Score(A) = 100 * 0 + 10 * 0.25 - 0 = 0 + 2.5 = **2.5**
+
+---
+
+### **步骤 4: 最终选择**
+
+- East 的得分是 402.5
+- South 的得分是 2.5
+
+**最高分行动是：East**
+
+且 D_G = 2 > 1，不会撞到幽灵。
+
+---
+
+### ✅ 最终行动：
+
+<action>East</action>
+--- ACTION ---
+East
+------------------------------
+TIME: 2025-12-10 21:56:08.948828
+--- FULL USER INPUT ---
+
+        "*** YOUR PROMPT HERE ***" 
+        你现在是一个操作顶尖的吃豆人。你有两个必须要完成的任务：
+        
+        *** 游戏目标（优先级从高到低） ***
+            1. 需要避开不断追赶你的ghosts，与他保持一定的距离。
+            2. 需要把所有的food吃完。
+        
+        这个是当前的游戏数据：'''{'layout_list': ['(0,0)=Wall,(1,0)=Wall,(2,0)=Wall,(3,0)=Wall,(4,0)=Wall,(5,0)=Wall,(6,0)=Wall', '(0,1)=Wall,(1,1)=Ghost1,(2,1)=Pacman,(3,1)=Empty,(4,1)=Empty,(5,1)=Empty,(6,1)=Wall', '(0,2)=Wall,(1,2)=Empty,(2,2)=Wall,(3,2)=Wall,(4,2)=Wall,(5,2)=Empty,(6,2)=Wall', '(0,3)=Wall,(1,3)=Empty,(2,3)=Wall,(3,3)=Food,(4,3)=Empty,(5,3)=Empty,(6,3)=Wall', '(0,4)=Wall,(1,4)=Empty,(2,4)=Wall,(3,4)=Wall,(4,4)=Wall,(5,4)=Empty,(6,4)=Wall', '(0,5)=Wall,(1,5)=Food,(2,5)=Empty,(3,5)=Empty,(4,5)=Empty,(5,5)=Empty,(6,5)=Wall', '(0,6)=Wall,(1,6)=Wall,(2,6)=Wall,(3,6)=Wall,(4,6)=Wall,(5,6)=Wall,(6,6)=Wall'], 'pacman_pos': [2, 1], 'ghost_pos': [[1, 1]], 'score': -6.0, 'food_count': 2, 'legal_actions': ['West', 'Stop', 'East']}'''
+        
+        *** 数据解析 ***
+        其中：
+            1. layout_list: (List of Strings) ["(0,0)=Wall", "(1,0)=Pacman"...]
+                - wall 是墙壁，不能通过这里
+                - Pacman 是你所在的位置
+            2. pacman_pos: (List of Integers) [x, y]
+                - 表明你当前的位置
+            3. ghost_pos: (List of Lists) [[x, y], [x, y]]
+                - 表明ghost的位置，你需要尽可能避开它
+            4. score: (Integer)
+                - 当前的分数，你需要尽可能提高这个分数
+            5. food_count: (Integer)
+                - 地图中的食物数量，你需要获取所有的食物
+            6. legal_actions: (List of Strings) ['North', 'South', ...]
+                - 合法的操作。请注意绝大多数情况，不会选择'stop'，你可以理解为把'stop'移除。
+        请注意，north会使y减小。
+        
+        *** 决策思路 ***
+
+        于每一个合法的行动 A (Action)，计算其执行后的新位置 P_new = [x_new, y_new]。使用曼哈顿距离 $D_man(P_1, P_2) = |x_1 - x_2| + |y_1 - y_2|$ 进行距离计算。
+
+        计算以下三个关键指标：
+        1. **最小幽灵距离 ($D_G$)：** $D_G = \min_g \in ghost\_pos D_man(P_	extnew, g)$
+        2. **最小食物距离 ($D_F$)：** $D_F = \min_f \in 	extfood\_pos D_man(P_	extnew, f)$
+        3. **避免折返惩罚 ($C_	extturn$)：** 如果行动 A 是 'last_action' 的反方向，则 $C_	extturn = 	extHigh\_Penalty$；否则 $C_	extturn = 0$。
+
+        **行动评分公式 (Score(A))：**
+
+        Score(A) = $W_G \cdot f_G(D_G) + W_F \cdot f_F(D_F) - C_	extturn$
+        其中：
+        * **安全函数 $f_G(D_G)$ (逃跑奖励):**
+            * 如果 $D_G \le 3$ (危险区)，$f_G(D_G) = D_G^2$ (距离越远，奖励越大，指数级逃跑)。
+            * 如果 $D_G > 3$ (安全区)，$f_G(D_G) = 0$ (不奖励远离，专注于吃豆)。
+        * **觅食函数 $f_F(D_F)$ (靠近奖励):**
+            * $f_F(D_F) = 1 / (D_F + 1)$ (距离越近，奖励越大)。
+        * **权重:** $W_G$ (安全权重) 设为 **100** (生存优先)；$W_F$ (食物权重) 设为 **10**。
+
+        *** 决策步骤 ***
+
+        1.  **解析数据：** 转换 `layout_list` 为网格地图，确定所有 `food_pos`。
+        2.  **过滤非法动作：** 移除 'Stop'。
+        3.  **计算评分：** 对所有合法的行动，计算 $P_	extnew$ 并代入评分公式 $Score(A)$。
+        4.  **最终选择：** 选择 $Score(A)$ 最高的行动。如果最高得分的行动仍然导致 $D_G = 1$ (即下一步将撞到幽灵)，则退回到次高分的安全行动。
+
+        请你遵循这个评分系统，逐步推理，并给出最终行动。
+        
+输出最终行动，格式必须严格如下：<action>行动</action>。其中"行动"必须是以下之一: North, South, East, West, Stop
+ 例如：<action>North</action>
+--- RESPONSE ---
+<action>West</action>
+--- ACTION ---
+West
+------------------------------
