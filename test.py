@@ -1,5 +1,4 @@
-x_1 = 0.4
-x_2 = 0.8
+import math
 
-y =  (x_1 - 1)**2 + (x_2 - 2)**2
-print(y)
+result = 2 * math.comb(60, 2) * math.comb(40, 1) / math.comb(100, 3) / math.perm(3, 3)
+print(result - (236 / 1617))
