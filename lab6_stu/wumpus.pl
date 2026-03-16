@@ -36,6 +36,8 @@ step_pre(VisitedList) :-
                format('Visited Cells: ~p', [VisitedList])
     ; AL=WL -> format('Lost: Wumpus eats you!~n', []),
                format('Score: ~p,~n Time: ~p', [S,T])
+    ; pit_location(AL) -> format('Lost: Fell into a pit!~n', []),
+                      format('Score: ~p, ~n Time: ~p', [S, T])
     ; T > 100 -> format('Lost: Time is up!~n', [])
     ; take_steps(VisitedList)
     ).
@@ -69,7 +71,12 @@ update_time :-
 update_score :-
     % TODO
     retract(score(PreS)),
-    NewS is PreS - 1,
+    agent_location(AL),
+    gold_location(GL),
+    (
+        AL = GL -> NewS is PreS + 50
+        ; NewS is PreS - 1
+    ),
     assert(score(NewS)).
 
 update_agent_location(NewAL, VisitedList) :-
@@ -122,7 +129,7 @@ init_agent :-
 
 init_wumpus :-
     retractall( wumpus_location(_) ),
-    assert( wumpus_location([4,1]) ).
+    assert( wumpus_location([3,1]) ).
 
 %------------------------------------------------------------------------------
 % Perceptors
@@ -151,8 +158,7 @@ isBreezy(L) :-
 
 isGlittering(L) :-
     % TODO
-    gold_location(GL),
-    adjacent(L, GL).
+    gold_location(L).
 
 breezy(yes) :-
     agent_location(AL),
@@ -183,11 +189,8 @@ glittering(no) :-
     no_gold/1,
     no_pit/1,
     maybe_wumpus/1,
-    maybe_gold/1,
-    maybe_pit/1,
-    is_wumpus/1,
     is_gold/1,
-    is_pit/1
+    maybe_pit/1
 ]).
 
 update_KB( [Stench,Breeze,Glitter] ) :-
@@ -198,36 +201,106 @@ update_KB( [Stench,Breeze,Glitter] ) :-
 
 add_wumpus_KB(no) :-
     % TODO
-    agent_location(AL),
+    agent_location(AL), % 获取当前坐标
     (
-        \+ no_wumpus(AL) -> 
+        \+ no_wumpus(AL) -> % 如果之前没有添加过，那么就添加
             assert(no_wumpus(AL))
         ;true
     ),
 
-    forall(
+    forall( % 遍历领居
         adjacent(AL, NeighbourL),
         (
-            \+ no_wumpus(AL) ->
-                assert(no_wumpus(NeighbourL))
-            ;true
+            (
+                \+ no_wumpus(NeighbourL) -> % 如果领居没有标注，则标注
+                    assert(no_wumpus(NeighbourL))
+                ;true
+            ),
+            (
+                maybe_wumpus(NeighbourL) -> % 被误判则清除
+                    retract(maybe_wumpus(NeighbourL))
+                ;true
+            )
         )
     ).
     
 add_wumpus_KB(yes) :-
     % TODO
+    agent_location(AL),
+    forall(
+        (
+            adjacent(AL, NeighbourL), 
+            \+ no_wumpus(NeighbourL)       
+        ),
+        (
+            \+ maybe_wumpus(NeighbourL) ->
+                assert(maybe_wumpus(NeighbourL))
+            ;true
+        )
+    ).
 
 add_pit_KB(no) :-
     % TODO
+    agent_location(AL), % 获取当前坐标
+    (
+        \+ no_pit(AL) -> % 如果之前没有添加过，那么就添加
+            assert(no_pit(AL))
+        ;true
+    ),
+
+    forall( % 遍历领居
+        adjacent(AL, NeighbourL),
+        (
+            (
+                \+ no_pit(NeighbourL) -> % 如果领居没有标注，则标注
+                    assert(no_pit(NeighbourL))
+                ;true
+            ),
+            (
+                maybe_pit(NeighbourL) -> % 被误判则清除
+                    retract(maybe_pit(NeighbourL))
+                ;true
+            )
+        )
+    ).
 
 add_pit_KB(yes) :-
     % TODO
+    agent_location(AL),
+    forall(
+        (
+            adjacent(AL, NeighbourL),        
+            \+ no_pit(NeighbourL)
+        ),
+        (
+            \+ maybe_pit(NeighbourL) ->
+                assert(maybe_pit(NeighbourL))
+            ;true
+        )
+    ).
+
 
 add_gold_KB(no) :-
     % TODO
+    agent_location(AL).
 
 add_gold_KB(yes) :-
     % TODO
+    agent_location(AL),
+    is_gold(AL).
 
 ask_KB(VisitedList, Action) :-
     % TODO
+    agent_location(AL),
+    (
+        adjacent(AL, Action),
+        \+ member(Action, VisitedList),
+        \+ maybe_wumpus(Action),
+        \+ maybe_pit(Action)
+    -> true
+    ; 
+        adjacent(AL, Action),
+        member(Action, VisitedList),
+        \+ maybe_wumpus(Action),
+        \+ maybe_pit(Action)
+    ).
